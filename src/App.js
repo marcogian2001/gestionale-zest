@@ -84,7 +84,7 @@ export default function App() {
 
 function NavButton({ item, active, onClick }) {
   return (
-    <button onClick={onClick} style={{ display:"block", width:"100%", textAlign:"left", padding:"9px 1.25rem", cursor:"pointer", fontSize:13, fontWeight:active?600:400, color:active?"#111827":"#6B7280", background:active?"#F3F4F6":"transparent", border:"none", borderLeft:`3px solid ${active?"#111827":"transparent"}`, fontFamily:"inherit" }}>
+    <button onClick={onClick} style={{ display:"block", width:"100%", textAlign:"left", padding:"9px 1.25rem", cursor:"pointer", fontSize:13, fontWeight:active?600:400, color:active?"#111827":"#6B7280", background:active?"#F3F4F6":"transparent", border:"none", borderLeft:`3px solid ${active?"#FF6B2B":"transparent"}`, fontFamily:"inherit" }}>
       {item.label}
     </button>
   );
