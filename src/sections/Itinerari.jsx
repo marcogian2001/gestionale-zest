@@ -10,7 +10,10 @@ export default function SezioneItinerari({ itinerari, setItinerari, showToast })
   const [ns, setNs] = useState("");
   const [turniNew, setTurniNew] = useState([{ id: newId(), in: "", out: "" }]);
   const [selManage, setSelManage] = useState("");
+  const [turniAdd, setTurniAdd] = useState([]);
+  const [showAddTurni, setShowAddTurni] = useState(false);
 
+  // ── Nuovo itinerario ──────────────────────────────────────────────────────
   const addTurno = () => setTurniNew(t => [...t, { id: newId(), in: "", out: "" }]);
   const removeTurno = (id) => setTurniNew(t => t.filter(x => x.id !== id));
   const updateTurno = (id, field, val) =>
@@ -26,6 +29,7 @@ export default function SezioneItinerari({ itinerari, setItinerari, showToast })
     showToast("Itinerario salvato");
   };
 
+  // ── Gestione turni itinerario esistente ───────────────────────────────────
   const toggleCancelled = (itId, idx) => {
     setItinerari(prev => prev.map(it => {
       if (it.id !== itId) return it;
@@ -37,6 +41,38 @@ export default function SezioneItinerari({ itinerari, setItinerari, showToast })
   const deleteIt = (itId) => setItinerari(prev => prev.filter(x => x.id !== itId));
 
   const managed = itinerari.find(x => String(x.id) === selManage);
+
+  // ── Aggiungi turni a itinerario esistente ─────────────────────────────────
+  const addTurnoToExisting = () =>
+    setTurniAdd(t => [...t, { id: newId(), in: "", out: "" }]);
+
+  const removeTurnoAdd = (id) => setTurniAdd(t => t.filter(x => x.id !== id));
+
+  const updateTurnoAdd = (id, field, val) =>
+    setTurniAdd(t => t.map(x => x.id === id ? { ...x, [field]: val } : x));
+
+  const saveTurniAdd = () => {
+    const validi = turniAdd.filter(t => t.in && t.out);
+    if (!validi.length) return;
+    setItinerari(prev => prev.map(it => {
+      if (String(it.id) !== selManage) return it;
+      const esistenti = it.turni.length;
+      const nuovi = validi.map((t, i) => ({
+        n: esistenti + i + 1,
+        in: t.in, out: t.out, cancelled: false,
+      }));
+      return { ...it, turni: [...it.turni, ...nuovi] };
+    }));
+    setTurniAdd([]);
+    setShowAddTurni(false);
+    showToast("Turni aggiunti");
+  };
+
+  const handleSelManage = (val) => {
+    setSelManage(val);
+    setShowAddTurni(false);
+    setTurniAdd([]);
+  };
 
   return (
     <div>
@@ -78,41 +114,87 @@ export default function SezioneItinerari({ itinerari, setItinerari, showToast })
       <Card>
         <div style={{ maxWidth: 320, marginBottom: 16 }}>
           <Field label="Seleziona itinerario">
-            <Select value={selManage} onChange={e => setSelManage(e.target.value)}>
+            <Select value={selManage} onChange={e => handleSelManage(e.target.value)}>
               <option value="">Seleziona...</option>
               {itinerari.map(it => <option key={it.id} value={it.id}>{it.ni}</option>)}
             </Select>
           </Field>
         </div>
+
         {!managed ? (
           <Empty>Seleziona un itinerario per gestire i turni</Empty>
-        ) : managed.turni.length === 0 ? (
-          <Empty>Nessun turno</Empty>
         ) : (
-          <table style={tableStyle}>
-            <thead>
-              <tr>{["Turno", "Data in", "Data out", "Stato", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
-            </thead>
-            <tbody>
-              {managed.turni.map((t, i) => (
-                <tr key={i}>
-                  <Td><span style={{ fontWeight: 600 }}>T{t.n}</span></Td>
-                  <Td><span style={{ textDecoration: t.cancelled ? "line-through" : "none", color: t.cancelled ? "#9CA3AF" : "inherit" }}>{fmtDate(t.in)}</span></Td>
-                  <Td><span style={{ textDecoration: t.cancelled ? "line-through" : "none", color: t.cancelled ? "#9CA3AF" : "inherit" }}>{fmtDate(t.out)}</span></Td>
-                  <Td>
-                    {t.cancelled
-                      ? <span style={{ background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A", borderRadius: 20, fontSize: 10, padding: "2px 8px" }}>Annullato</span>
-                      : <span style={{ background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0", borderRadius: 20, fontSize: 10, padding: "2px 8px" }}>Attivo</span>}
-                  </Td>
-                  <Td>
-                    <button onClick={() => toggleCancelled(managed.id, i)} style={btnSm}>
-                      {t.cancelled ? "Riattiva" : "Annulla"}
-                    </button>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            {/* Tabella turni esistenti */}
+            {managed.turni.length === 0 ? (
+              <Empty>Nessun turno</Empty>
+            ) : (
+              <table style={tableStyle}>
+                <thead>
+                  <tr>{["Turno", "Data in", "Data out", "Stato", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
+                </thead>
+                <tbody>
+                  {managed.turni.map((t, i) => (
+                    <tr key={i}>
+                      <Td><span style={{ fontWeight: 600 }}>T{t.n}</span></Td>
+                      <Td>
+                        <span style={{ textDecoration: t.cancelled ? "line-through" : "none", color: t.cancelled ? "#9CA3AF" : "inherit" }}>
+                          {fmtDate(t.in)}
+                        </span>
+                      </Td>
+                      <Td>
+                        <span style={{ textDecoration: t.cancelled ? "line-through" : "none", color: t.cancelled ? "#9CA3AF" : "inherit" }}>
+                          {fmtDate(t.out)}
+                        </span>
+                      </Td>
+                      <Td>
+                        {t.cancelled
+                          ? <span style={{ background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A", borderRadius: 20, fontSize: 10, padding: "2px 8px" }}>Annullato</span>
+                          : <span style={{ background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0", borderRadius: 20, fontSize: 10, padding: "2px 8px" }}>Attivo</span>}
+                      </Td>
+                      <Td>
+                        <button onClick={() => toggleCancelled(managed.id, i)} style={btnSm}>
+                          {t.cancelled ? "Riattiva" : "Annulla"}
+                        </button>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {/* Aggiungi nuovi turni */}
+            <div style={{ marginTop: 16, borderTop: "1px solid #F3F4F6", paddingTop: 14 }}>
+              {!showAddTurni ? (
+                <button
+                  onClick={() => { setShowAddTurni(true); addTurnoToExisting(); }}
+                  style={{ ...btnSecondary, fontSize: 11 }}
+                >
+                  + Aggiungi turni a questo itinerario
+                </button>
+              ) : (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+                    Nuovi turni
+                  </div>
+                  {turniAdd.map((t, i) => (
+                    <div key={t.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, color: "#9CA3AF", minWidth: 22 }}>T{managed.turni.length + i + 1}</span>
+                      <Input type="date" value={t.in} onChange={e => updateTurnoAdd(t.id, "in", e.target.value)} style={{ flex: 1 }} />
+                      <span style={{ fontSize: 12, color: "#9CA3AF" }}>→</span>
+                      <Input type="date" value={t.out} onChange={e => updateTurnoAdd(t.id, "out", e.target.value)} style={{ flex: 1 }} />
+                      <button onClick={() => removeTurnoAdd(t.id)} style={btnDanger}>✕</button>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                    <button onClick={addTurnoToExisting} style={{ ...btnSecondary, fontSize: 11 }}>+ Altro turno</button>
+                    <button onClick={() => { setShowAddTurni(false); setTurniAdd([]); }} style={{ ...btnSecondary, fontSize: 11 }}>Annulla</button>
+                    <button onClick={saveTurniAdd} style={{ ...btnPrimary, fontSize: 11 }}>Salva turni</button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
         )}
       </Card>
 
