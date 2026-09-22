@@ -96,6 +96,20 @@ Deno.serve(async (req) => {
         return risposta({ ok: true });
       }
 
+      case "blocca": {
+        if (id === user.id) throw new Error("Non puoi bloccare te stesso");
+        const { error } = await admin.from("profili").update({ attivo: body.attivo !== false }).eq("id", id);
+        if (error) throw error;
+        return risposta({ ok: true });
+      }
+
+      case "forza_cambio": {
+        const { error } = await admin.from("profili")
+          .update({ richiedi_cambio_password: body.richiedi !== false }).eq("id", id);
+        if (error) throw error;
+        return risposta({ ok: true });
+      }
+
       case "elimina": {
         if (id === user.id) return risposta({ error: "Non puoi eliminare te stesso" }, 400);
         const { error } = await admin.auth.admin.deleteUser(id);

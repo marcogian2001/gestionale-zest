@@ -13,6 +13,7 @@ import SezioneRegistro     from "./sections/Registro";
 import SezioneCestino      from "./sections/Cestino";
 import SezioneContabilita  from "./sections/Contabilita";
 import LoginPage           from "./components/LoginPage";
+import CambioPassword      from "./components/CambioPassword";
 import { Toast, ConfirmHost } from "./components/UI";
 
 const FONT = "'DM Sans','Segoe UI',system-ui,sans-serif";
@@ -20,10 +21,12 @@ const FONT = "'DM Sans','Segoe UI',system-ui,sans-serif";
 export default function App() {
   const { user, utenti, ruoli, ready, loading: authLoading, error: authError, login, logout,
           creaUtente, modificaUtente, reimpostaPassword, eliminaUtente,
+          bloccaUtente, forzaCambioPassword, cambiaPasswordPersonale,
           creaRuolo, modificaRuolo, eliminaRuolo } = useAuthState();
 
   const [section, setSection] = useState("itinerari");
   const [toast,   setToast]   = useState("");
+  const [cambioPsw, setCambioPsw] = useState(false);
 
   const showToast = useCallback((msg) => {
     setToast(msg); setTimeout(() => setToast(""), 2800);
@@ -42,6 +45,18 @@ export default function App() {
 
   if (!ready) return <Schermo>Caricamento...</Schermo>;
   if (!user)  return <LoginPage onLogin={login} loading={authLoading} error={authError} />;
+
+  if (!user.attivo) return (
+    <Schermo>
+      <div style={{ fontSize: 17, fontWeight: 700, color: "#111827", marginBottom: 8 }}>Account bloccato</div>
+      <div style={{ marginBottom: 18 }}>Il tuo accesso è stato sospeso. Contatta il Super Admin.</div>
+      <button onClick={logout} style={{ fontFamily: "inherit", fontSize: 12.5, fontWeight: 600, padding: "9px 18px", borderRadius: 10, border: "1px solid #DFE3E8", background: "#fff", cursor: "pointer" }}>Esci</button>
+    </Schermo>
+  );
+
+  if (user.richiediCambio) return (
+    <CambioPassword obbligatorio onCambia={cambiaPasswordPersonale} onLogout={logout} />
+  );
 
   const alertAperti = db.spese.filter(s => s.alert && !s.alertRisoltoAt).length;
 
@@ -88,12 +103,20 @@ export default function App() {
           <div style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 9, lineHeight: 1.4 }}>
             {user.ruoli.map(r => r.nome).join(" · ") || "Nessun ruolo"}
           </div>
-          <button onClick={logout} style={{
-            fontSize: 11, fontFamily: "inherit", padding: "6px 10px", borderRadius: 8, cursor: "pointer",
-            fontWeight: 600, background: "#fff", color: "#EF4444", border: "1px solid #FECACA", width: "100%",
-          }}>
-            Esci
-          </button>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => setCambioPsw(true)} style={{
+              fontSize: 11, fontFamily: "inherit", padding: "6px 10px", borderRadius: 8, cursor: "pointer",
+              fontWeight: 600, background: "#fff", color: "#374151", border: "1px solid #DFE3E8", flex: 1,
+            }}>
+              Password
+            </button>
+            <button onClick={logout} style={{
+              fontSize: 11, fontFamily: "inherit", padding: "6px 10px", borderRadius: 8, cursor: "pointer",
+              fontWeight: 600, background: "#fff", color: "#EF4444", border: "1px solid #FECACA", flex: 1,
+            }}>
+              Esci
+            </button>
+          </div>
         </div>
       </nav>
 
@@ -108,9 +131,16 @@ export default function App() {
           {section === "registro"     && <SezioneRegistro     db={db} showToast={showToast} />}
           {section === "cestino"      && <SezioneCestino      db={db} showToast={showToast} />}
           {section === "ruoli"        && <SezioneRuoli ruoli={ruoli} onCrea={creaRuolo} onModifica={modificaRuolo} onElimina={eliminaRuolo} showToast={showToast} />}
-          {section === "utenti"       && <SezioneUtenti utenti={utenti} ruoli={ruoli} currentUser={user} onCrea={creaUtente} onModifica={modificaUtente} onReimposta={reimpostaPassword} onElimina={eliminaUtente} showToast={showToast} />}
+          {section === "utenti"       && <SezioneUtenti utenti={utenti} ruoli={ruoli} currentUser={user} onCrea={creaUtente} onModifica={modificaUtente} onReimposta={reimpostaPassword} onElimina={eliminaUtente} onBlocca={bloccaUtente} onForzaCambio={forzaCambioPassword} showToast={showToast} />}
         </>}
       </main>
+
+      {cambioPsw && (
+        <CambioPassword
+          onCambia={async (a, n) => { await cambiaPasswordPersonale(a, n); showToast("Password aggiornata"); }}
+          onClose={() => setCambioPsw(false)}
+        />
+      )}
 
       <Toast msg={toast} />
       <ConfirmHost />

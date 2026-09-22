@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { MODULO_LABEL } from "../utils/auth";
 import {
-  Card, CardTitle, SectionTitle, Field, Input, Empty,
+  Card, CardTitle, SectionTitle, Field, Input, Empty, conferma,
   Th, Td, tableStyle, btnPrimary, btnSecondary, btnDanger, btnSm,
-  conferma,
 } from "../components/UI";
 
 const FORM_EMPTY = { nome: "", email: "", password: "", ruoli: [] };
 
-export default function SezioneUtenti({ utenti, ruoli, onCrea, onModifica, onReimposta, onElimina, showToast, currentUser }) {
+export default function SezioneUtenti({ utenti, ruoli, onCrea, onModifica, onReimposta, onElimina, onBlocca, onForzaCambio, showToast, currentUser }) {
   const [form,       setForm]       = useState(FORM_EMPTY);
   const [editId,     setEditId]     = useState(null);
   const [resetId,    setResetId]    = useState(null);
@@ -135,7 +134,7 @@ export default function SezioneUtenti({ utenti, ruoli, onCrea, onModifica, onRei
         <div style={{ overflowX: "auto" }}>
           <table style={tableStyle}>
             <thead>
-              <tr>{["Nome", "Email", "Ruoli", "Creato il", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
+              <tr>{["Nome", "Email", "Ruoli", "Stato", "Creato il", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
             </thead>
             <tbody>
               {utenti.map(u => (
@@ -157,6 +156,13 @@ export default function SezioneUtenti({ utenti, ruoli, onCrea, onModifica, onRei
                       ))}
                     </div>
                   </Td>
+                  <Td>
+                    {!u.attivo
+                      ? <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "#FEF2F2", color: "#B91C1C", border: "1px solid #FECACA" }}>Bloccato</span>
+                      : u.richiediCambio
+                        ? <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: "#FFF7ED", color: "#92400E", border: "1px solid #FDE68A" }}>Cambio psw richiesto</span>
+                        : <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 8px", borderRadius: 20, background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" }}>Attivo</span>}
+                  </Td>
                   <Td style={{ fontSize: 11, color: "#9CA3AF" }}>
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString("it-IT") : "—"}
                   </Td>
@@ -164,6 +170,29 @@ export default function SezioneUtenti({ utenti, ruoli, onCrea, onModifica, onRei
                     <div style={{ display: "flex", gap: 6 }}>
                       <button onClick={() => avviaModifica(u)} style={btnSm}>Modifica</button>
                       <button onClick={() => setResetId(u.id)} style={btnSm}>Password</button>
+                      {u.id !== currentUser?.id && (
+                        <button
+                          onClick={async () => {
+                            try { await onForzaCambio(u.id, !u.richiediCambio); showToast(u.richiediCambio ? "Richiesta annullata" : "Cambio password richiesto"); }
+                            catch (e) { setErrore(e.message); }
+                          }}
+                          style={btnSm}
+                        >
+                          {u.richiediCambio ? "Annulla cambio" : "Forza cambio psw"}
+                        </button>
+                      )}
+                      {u.id !== currentUser?.id && (
+                        <button
+                          onClick={async () => {
+                            if (u.attivo && !(await conferma(`Bloccare l'accesso di ${u.nome}? Non potrà più entrare nel gestionale finché non lo sblocchi.`, "Blocca"))) return;
+                            try { await onBlocca(u.id, !u.attivo); showToast(u.attivo ? "Account bloccato" : "Account sbloccato"); }
+                            catch (e) { setErrore(e.message); }
+                          }}
+                          style={u.attivo ? btnDanger : btnSm}
+                        >
+                          {u.attivo ? "Blocca" : "Sblocca"}
+                        </button>
+                      )}
                       {u.id !== currentUser?.id && (
                         <button onClick={async () => {
                           if (!(await conferma(`Eliminare l'utente ${u.nome}?`))) return;

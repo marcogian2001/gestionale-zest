@@ -47,6 +47,8 @@ function mapProfilo(p) {
   const ruoli = (p.profili_ruoli || []).map(x => mapRuolo(x.ruoli)).filter(Boolean);
   return {
     id: p.id, nome: p.nome, email: p.email, createdAt: p.created_at,
+    attivo: p.attivo !== false,
+    richiediCambio: !!p.richiedi_cambio_password,
     ruoli,
     permessi: [...new Set(ruoli.flatMap(r => r.permessi))],
     superAdmin: ruoli.some(r => r.superAdmin),
@@ -139,6 +141,27 @@ export function useAuthState() {
     await ricarica();
   };
 
+  const bloccaUtente = async (id, attivo) => {
+    await adminUtenti({ action: "blocca", id, attivo });
+    await ricarica();
+  };
+
+  const forzaCambioPassword = async (id, richiedi = true) => {
+    await adminUtenti({ action: "forza_cambio", id, richiedi });
+    await ricarica();
+  };
+
+  // Cambio password fatto dall'utente stesso: prima si verifica quella attuale
+  const cambiaPasswordPersonale = async (attuale, nuova) => {
+    const { error: e1 } = await supabase.auth.signInWithPassword({ email: user.email, password: attuale });
+    if (e1) throw new Error("La password attuale non è corretta");
+    const { error: e2 } = await supabase.auth.updateUser({ password: nuova });
+    if (e2) throw new Error(e2.message);
+    await supabase.rpc("completa_cambio_password");
+    const { data } = await supabase.auth.getSession();
+    if (data.session) await caricaProfilo(data.session);
+  };
+
   const reimpostaPassword = async (id, password) => {
     await adminUtenti({ action: "password", id, password });
   };
@@ -168,6 +191,7 @@ export function useAuthState() {
     user, utenti, ruoli, ready, loading, error,
     login, logout,
     creaUtente, modificaUtente, reimpostaPassword, eliminaUtente,
+    bloccaUtente, forzaCambioPassword, cambiaPasswordPersonale,
     creaRuolo, modificaRuolo, eliminaRuolo,
   };
 }
