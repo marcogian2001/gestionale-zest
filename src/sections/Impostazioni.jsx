@@ -42,7 +42,7 @@ export default function SezioneImpostazioni({ db, showToast }) {
         <CardTitle>Aree e cartelle Drive</CardTitle>
         <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>
           Ogni area ha la sua cartella di partenza su Drive. Dentro, il gestionale crea da solo
-          la cartella dell'anno e quella del mese (es. <b>2026 / 09 - Settembre</b>) in base alla
+          la cartella dell'anno e quella del mese (es. <b>2026 / 09 SETTEMBRE 2026</b>) in base alla
           data della fattura, e ci salva il documento.
         </p>
         <AreeDrive db={db} showToast={showToast} />

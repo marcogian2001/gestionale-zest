@@ -131,7 +131,8 @@ export async function cartellaDelMese(dataDoc, area, cache, token) {
   };
 
   const cartellaAnno = await risolvi(anno, 0, String(anno), area.driveFolderId);
-  const nomeMese = `${String(mese).padStart(2, "0")} - ${MESI[mese - 1]}`;
+  // es. "01 GENNAIO 2027"
+  const nomeMese = `${String(mese).padStart(2, "0")} ${MESI[mese - 1].toUpperCase()} ${anno}`;
   return risolvi(anno, mese, nomeMese, cartellaAnno);
 }
 
