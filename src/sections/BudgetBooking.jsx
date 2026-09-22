@@ -8,11 +8,12 @@ import {
 } from "../components/UI";
 import { Badge, TurnoBadge, AutoreCell } from "../components/UI";
 
-export default function SezioneBudget({ db, showToast }) {
+export default function SezioneBudget({ db, user, showToast }) {
   const { itinerari, spese } = db;
   const [fIt,  setFIt]  = useState("");
   const [fT,   setFT]   = useState("");
   const [fCat, setFCat] = useState("");
+  const [fDoc, setFDoc] = useState("");
   const [inModifica, setInModifica] = useState(null);
 
   const turniDisp = fIt
@@ -23,6 +24,7 @@ export default function SezioneBudget({ db, showToast }) {
     if (fIt  && String(s.itId) !== fIt)       return false;
     if (fT   && s.turnoN !== parseInt(fT))    return false;
     if (fCat && s.cat !== fCat)               return false;
+    if (fDoc && s.statoDoc !== fDoc)          return false;
     return true;
   });
 
@@ -58,6 +60,14 @@ export default function SezioneBudget({ db, showToast }) {
               {turniDisp.map(t => (
                 <option key={t.id} value={t.n}>T{t.n}: {fmtDate(t.in)} → {fmtDate(t.out)}</option>
               ))}
+            </Select>
+          </Field>
+        </div>
+        <div style={{ minWidth: 150, flex: 1 }}>
+          <Field label="Documento">
+            <Select value={fDoc} onChange={e => setFDoc(e.target.value)}>
+              <option value="">Tutti</option>
+              {Object.entries(STATI_DOC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </Select>
           </Field>
         </div>
@@ -110,7 +120,7 @@ export default function SezioneBudget({ db, showToast }) {
                   <Td style={{ color: "#9CA3AF", fontSize: 10 }}>{s.fattura}</Td>
                   <Td style={{ fontSize: 11 }}>{s.modalita}</Td>
                   <Td style={{ fontSize: 11 }}>{s.da}</Td>
-                  <Td><DocCell spesa={s} db={db} spese={spese} showToast={showToast} /></Td>
+                  <Td><DocCell spesa={s} db={db} spese={spese} user={user} showToast={showToast} /></Td>
                   <Td><AutoreCell item={s} nomeUtente={db.nomeUtente} /></Td>
                   <Td>
                     <div style={{ display: "flex", gap: 4 }}>
@@ -251,10 +261,18 @@ function RimborsoBadge({ spesa, spese }) {
 }
 
 // ── Colonna documento: link, stato, caricamento successivo ──────────────────
-function DocCell({ spesa, db, spese, showToast }) {
+function DocCell({ spesa, db, spese, user, showToast }) {
   const [apri, setApri] = useState(false);
   const rimborso = spesa.tipo === "rimborso";
   const origine  = rimborso ? spese.find(x => x.id === spesa.origineId) : null;
+
+  const sblocca = async () => {
+    if (!(await conferma(
+      "Sbloccare il documento? Tornerà «in attesa» e potrà essere caricato. La contabilità riceverà un alert per verificare l'eventuale documento fittizio già registrato.",
+      "Sblocca",
+    ))) return;
+    if (await db.sbloccaDocumento(spesa)) showToast("Documento sbloccato");
+  };
 
   const nonRecuperabile = async () => {
     const cosa = rimborso ? "il documento di storno" : "la fattura";
@@ -280,7 +298,14 @@ function DocCell({ spesa, db, spese, showToast }) {
       </div>
     );
   }
-  return <span style={{ fontSize: 10, color: "#9CA3AF", whiteSpace: "nowrap" }}>{STATI_DOC[spesa.statoDoc] || "—"}</span>;
+  return (
+    <div style={{ whiteSpace: "nowrap" }}>
+      <div style={{ fontSize: 10, color: "#9CA3AF" }}>{STATI_DOC[spesa.statoDoc] || "—"}</div>
+      {user?.ruolo === "super_admin" && (
+        <button onClick={sblocca} style={{ ...btnSm, marginTop: 3 }}>🔓 Sblocca</button>
+      )}
+    </div>
+  );
 }
 
 // ── Caricamento della fattura arrivata dopo ──────────────────────────────────

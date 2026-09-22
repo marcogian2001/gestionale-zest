@@ -152,6 +152,13 @@ export function useZestData(enabled, showToast) {
     }).eq("id", spesa.id));
   };
 
+  // Sblocco (solo Super Admin): un documento dato per perso salta fuori
+  const sbloccaDocumento = (spesa) => run(supabase.from("spese").update({
+    stato_doc: "in_attesa",
+    alert_contabilita: `Documento recuperato dopo essere stato segnato come non recuperabile${spesa.fattura ? ` (${spesa.fattura})` : ""}: verificare l'eventuale documento fittizio già registrato.`,
+    alert_risolto_at: null,
+  }).eq("id", spesa.id));
+
   const risolviAlert = (id, risolto = true) =>
     run(supabase.from("spese").update({ alert_risolto_at: risolto ? new Date().toISOString() : null }).eq("id", id));
 
@@ -202,6 +209,6 @@ export function useZestData(enabled, showToast) {
     aree, area, salvaArea, creaArea, cacheCartelle,
     ripristina, annullaAzione,
     creaItinerario, eliminaItinerario, setTurnoAnnullato, aggiungiTurni,
-    creaSpesa, modificaSpesa, eliminaSpesa, collegaDocumento, segnaNonRecuperabile, risolviAlert, salvaImpostazione,
+    creaSpesa, modificaSpesa, eliminaSpesa, collegaDocumento, segnaNonRecuperabile, sbloccaDocumento, risolviAlert, salvaImpostazione,
   };
 }

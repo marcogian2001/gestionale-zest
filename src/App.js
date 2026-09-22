@@ -84,7 +84,7 @@ export default function App() {
         ) : <>
         {section==="itinerari"    && <SezioneItinerari    db={db} showToast={showToast} />}
         {section==="booking"      && <SezioneInputBooking db={db} user={user} showToast={showToast} />}
-        {section==="budget"       && <SezioneBudget       db={db} showToast={showToast} />}
+        {section==="budget"       && <SezioneBudget       db={db} user={user} showToast={showToast} />}
         {section==="riepilogo"    && <SezioneRiepilogo    itinerari={db.itinerari} spese={db.spese} />}
         {section==="impostazioni" && <SezioneImpostazioni db={db} showToast={showToast} />}
         {section==="registro"     && <SezioneRegistro     db={db} showToast={showToast} />}
