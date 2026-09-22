@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { fmt, fmtDate, CATEGORIE, MODALITA, STATI_DOC } from "../utils/helpers";
-import { buildFileName, caricaSuDrive } from "../utils/driveUpload";
+import { buildFileName, caricaOrganizzato, AREA_BOOKING } from "../utils/driveUpload";
 import {
   SectionTitle, Field, Input, Select, Empty, MetricCard,
   Th, Td, tableStyle, btnDanger, btnSm, btnPrimary, btnSecondary, inputStyle,
@@ -286,7 +286,10 @@ function CaricaDocumento({ spesa, db, showToast, onClose }) {
     if (!file)            return setErrore("Scegli il file della fattura");
     setErrore(""); setUploading(true);
     try {
-      const url = await caricaSuDrive(file, nomeFile);
+      const areaBooking = db.area(AREA_BOOKING);
+      const url = await caricaOrganizzato(file, nomeFile, {
+        dataDoc: dataFattura, area: areaBooking, cache: areaBooking && db.cacheCartelle(areaBooking.id),
+      });
       if (await db.collegaDocumento(spesa.id, url, { fattura: fattura.trim(), dataFattura })) {
         showToast("Fattura caricata su Drive");
         onClose();

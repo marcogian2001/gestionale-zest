@@ -48,10 +48,12 @@ export function useZestData(enabled, showToast) {
   const [spese,      setSpese]      = useState([]);
   const [impostazioni, setImpostazioni] = useState({});
   const [nomiUtenti, setNomiUtenti] = useState({});
+  const [aree, setAree] = useState([]);
+  const [cartelle, setCartelle] = useState([]);
   const [loading,    setLoading]    = useState(true);
 
   const reload = useCallback(async () => {
-    const [it, sp, imp, pr] = await Promise.all([
+    const [it, sp, imp, pr, ar, ca] = await Promise.all([
       supabase.from("itinerari")
         .select("*, turni(id, n, data_in, data_out, cancelled, deleted_at)")
         .is("deleted_at", null)
@@ -62,11 +64,15 @@ export function useZestData(enabled, showToast) {
         .order("created_at"),
       supabase.from("impostazioni").select("chiave, valore"),
       supabase.from("profili").select("id, nome"),
+      supabase.from("aree").select("*").order("nome"),
+      supabase.from("drive_cartelle").select("*"),
     ]);
     const err = it.error || sp.error || imp.error || pr.error;
     if (err) { showToast("Errore caricamento dati: " + err.message); setLoading(false); return; }
     setItinerari(it.data.map(r => mapItinerario({ ...r, turni: r.turni.filter(t => !t.deleted_at) })));
     setNomiUtenti(Object.fromEntries(pr.data.map(p => [p.id, p.nome])));
+    setAree((ar.data || []).map(a => ({ id: a.id, nome: a.nome, driveFolderId: a.drive_folder_id })));
+    setCartelle(ca.data || []);
     setSpese(sp.data.map(mapSpesa));
     setImpostazioni(Object.fromEntries(imp.data.map(r => [r.chiave, r.valore])));
     setLoading(false);
@@ -155,8 +161,30 @@ export function useZestData(enabled, showToast) {
 
   const nomeUtente = (id) => (id && nomiUtenti[id]) || "—";
 
+  // ── Aree e cartelle Drive ──────────────────────────────────────────────────
+  const area = (nome) => aree.find(a => a.nome === nome) || null;
+
+  const salvaArea = (id, driveFolderId) =>
+    run(supabase.from("aree").update({ drive_folder_id: driveFolderId }).eq("id", id));
+
+  const creaArea = (nome, driveFolderId) =>
+    run(supabase.from("aree").insert({ nome, drive_folder_id: driveFolderId }));
+
+  // Cache delle cartelle create su Drive (mese 0 = cartella dell'anno)
+  const cacheCartelle = (areaId) => ({
+    get: (anno, mese) =>
+      cartelle.find(c => c.area_id === areaId && c.anno === anno && c.mese === mese)?.folder_id || null,
+    salva: async (anno, mese, folderId) => {
+      const { data } = await supabase.from("drive_cartelle")
+        .insert({ area_id: areaId, anno, mese, folder_id: folderId })
+        .select().single();
+      if (data) setCartelle(prev => [...prev, data]);
+    },
+  });
+
   return {
     itinerari, spese, impostazioni, loading, reload, nomeUtente,
+    aree, area, salvaArea, creaArea, cacheCartelle,
     ripristina, annullaAzione,
     creaItinerario, eliminaItinerario, setTurnoAnnullato, aggiungiTurni,
     creaSpesa, modificaSpesa, eliminaSpesa, collegaDocumento, risolviAlert, salvaImpostazione,
