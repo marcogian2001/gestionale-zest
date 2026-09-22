@@ -361,7 +361,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
                 <>
                   <label style={labelCheck}>
                     <input type="checkbox" checked={form.inAttesa} onChange={e => flagDoc("inAttesa", e.target.checked)} />
-                    Documento di storno in attesa <span style={{ color: "#9CA3AF" }}>(lo carichi quando arriva, da Budget booking)</span>
+                    Documento di storno in attesa <span style={{ color: "#9CA3AF" }}>(da caricare alla ricezione in sezione Budget booking)</span>
                   </label>
                   <label style={labelCheck}>
                     <input type="checkbox" checked={form.senzaStorno} onChange={e => flagDoc("senzaStorno", e.target.checked)} />
@@ -372,7 +372,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
                 <>
                   <label style={labelCheck}>
                     <input type="checkbox" checked={form.inAttesa} onChange={e => flagDoc("inAttesa", e.target.checked)} />
-                    Fattura in attesa <span style={{ color: "#9CA3AF" }}>(la carichi quando arriva, da Budget booking)</span>
+                    Fattura in attesa <span style={{ color: "#9CA3AF" }}>(da caricare alla ricezione in sezione Budget booking)</span>
                   </label>
                   <label style={labelCheck}>
                     <input type="checkbox" checked={form.nonRecuperabile} onChange={e => flagDoc("nonRecuperabile", e.target.checked)} />
@@ -383,7 +383,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
             </div>
             {rimborso && form.inAttesa && (
               <div style={{ fontSize: 11, color: "#92400E", marginTop: 6 }}>
-                Il rimborso resta in attesa del documento di storno: da Budget booking potrai caricarlo oppure segnarlo come non recuperabile.
+                Il rimborso resta in attesa del documento di storno, da caricare alla ricezione in sezione Budget booking, dove è possibile anche segnarlo come non recuperabile.
               </div>
             )}
             {rimborso && form.senzaStorno && (
