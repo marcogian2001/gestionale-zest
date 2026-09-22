@@ -73,7 +73,7 @@ export default function App() {
         </div>
       </nav>
 
-      <main style={{ marginLeft:210, flex:1, padding:"2rem 2.5rem", maxWidth:"calc(100vw - 210px)" }}>
+      <main style={{ marginLeft:210, flex:1, minWidth:0, padding:"2rem 2.5rem", maxWidth:"calc(100vw - 210px)", boxSizing:"border-box" }}>
         {db.loading ? (
           <div style={{ padding: "3rem", textAlign: "center", color: "#9CA3AF" }}>Caricamento dati...</div>
         ) : <>

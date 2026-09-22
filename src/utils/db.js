@@ -120,6 +120,13 @@ export function useZestData(enabled, showToast) {
     drive_url: s.driveUrl,
   }));
 
+  const modificaSpesa = (id, s) => run(supabase.from("spese").update({
+    itinerario_id: s.itId, turno_id: s.turnoId,
+    cat: s.cat, fornitore: s.fornitore, descrizione: s.desc,
+    importo: s.importo, data: s.data || null, fattura: s.fattura,
+    modalita: s.modalita, effettuato_da: s.da, note: s.note,
+  }).eq("id", id));
+
   const eliminaSpesa = (id) =>
     run(supabase.from("spese").update({ deleted_at: new Date().toISOString() }).eq("id", id));
 
@@ -138,6 +145,6 @@ export function useZestData(enabled, showToast) {
     itinerari, spese, impostazioni, loading, reload, nomeUtente,
     ripristina, annullaAzione,
     creaItinerario, eliminaItinerario, setTurnoAnnullato, aggiungiTurni,
-    creaSpesa, eliminaSpesa, salvaImpostazione,
+    creaSpesa, modificaSpesa, eliminaSpesa, salvaImpostazione,
   };
 }

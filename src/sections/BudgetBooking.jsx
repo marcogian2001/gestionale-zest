@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { fmt, fmtDate, CATEGORIE } from "../utils/helpers";
+import { fmt, fmtDate, CATEGORIE, MODALITA } from "../utils/helpers";
 import {
-  SectionTitle, Field, Select, Empty, MetricCard,
-  Th, Td, tableStyle, btnDanger,
+  SectionTitle, Field, Input, Select, Empty, MetricCard,
+  Th, Td, tableStyle, btnDanger, btnSm, btnPrimary, btnSecondary, inputStyle,
   conferma,
 } from "../components/UI";
 import { Badge, TurnoBadge, AutoreCell } from "../components/UI";
@@ -12,6 +12,7 @@ export default function SezioneBudget({ db }) {
   const [fIt,  setFIt]  = useState("");
   const [fT,   setFT]   = useState("");
   const [fCat, setFCat] = useState("");
+  const [inModifica, setInModifica] = useState(null);
 
   const turniDisp = fIt
     ? (itinerari.find(x => String(x.id) === fIt)?.turni || [])
@@ -105,7 +106,12 @@ export default function SezioneBudget({ db }) {
                       : <span style={{ fontSize: 10, color: "#D1D5DB" }}>—</span>}
                   </Td>
                   <Td><AutoreCell item={s} nomeUtente={db.nomeUtente} /></Td>
-                  <Td><button onClick={() => deleteSpesa(s)} style={btnDanger}>✕</button></Td>
+                  <Td>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button onClick={() => setInModifica(s)} style={btnSm}>Modifica</button>
+                      <button onClick={() => deleteSpesa(s)} style={btnDanger}>✕</button>
+                    </div>
+                  </Td>
                 </tr>
               ))}
             </tbody>
@@ -119,6 +125,99 @@ export default function SezioneBudget({ db }) {
           </table>
         </div>
       )}
+      {inModifica && <ModificaSpesa spesa={inModifica} db={db} onClose={() => setInModifica(null)} />}
+    </div>
+  );
+}
+
+// ── Finestra modifica spesa ───────────────────────────────────────────────────
+function ModificaSpesa({ spesa, db, onClose }) {
+  const [form, setForm] = useState({
+    itId: String(spesa.itId), turnoId: String(spesa.turnoId), cat: spesa.cat,
+    fornitore: spesa.fornitore, desc: spesa.desc, importo: String(spesa.importo),
+    data: spesa.data || "", fattura: spesa.fattura, modalita: spesa.modalita,
+    da: spesa.da, note: spesa.note,
+  });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const turni = (db.itinerari.find(x => String(x.id) === form.itId)?.turni || [])
+    .filter(t => !t.cancelled || String(t.id) === String(spesa.turnoId));
+
+  const valida = form.itId && form.turnoId && form.cat && form.importo !== "";
+
+  const salva = async () => {
+    if (!valida) return;
+    setSaving(true);
+    const ok = await db.modificaSpesa(spesa.id, {
+      ...form, itId: Number(form.itId), turnoId: Number(form.turnoId),
+      importo: parseFloat(form.importo) || 0,
+    });
+    setSaving(false);
+    if (ok) onClose();
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", width: 640, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Modifica spesa</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Field label="Itinerario">
+            <Select value={form.itId} onChange={e => { set("itId", e.target.value); set("turnoId", ""); }}>
+              {db.itinerari.map(it => <option key={it.id} value={it.id}>{it.ni}</option>)}
+            </Select>
+          </Field>
+          <Field label="Turno">
+            <Select value={form.turnoId} onChange={e => set("turnoId", e.target.value)}>
+              <option value="">Seleziona turno...</option>
+              {turni.map(t => <option key={t.id} value={t.id}>Turno {t.n} — {fmtDate(t.in)} → {fmtDate(t.out)}</option>)}
+            </Select>
+          </Field>
+          <Field label="Categoria">
+            <Select value={form.cat} onChange={e => set("cat", e.target.value)}>
+              {CATEGORIE.map(c => <option key={c}>{c}</option>)}
+            </Select>
+          </Field>
+          <Field label="Fornitore">
+            <Input value={form.fornitore} onChange={e => set("fornitore", e.target.value)} />
+          </Field>
+          <Field label="Descrizione" style={{ gridColumn: "1/-1" }}>
+            <Input value={form.desc} onChange={e => set("desc", e.target.value)} />
+          </Field>
+          <Field label="Importo (€)">
+            <Input type="number" step="0.01" value={form.importo} onChange={e => set("importo", e.target.value)} />
+          </Field>
+          <Field label="Data pagamento">
+            <Input type="date" value={form.data} onChange={e => set("data", e.target.value)} />
+          </Field>
+          <Field label="N. Fattura / Ricevuta">
+            <Input value={form.fattura} onChange={e => set("fattura", e.target.value)} />
+          </Field>
+          <Field label="Modalità pagamento">
+            <Select value={form.modalita} onChange={e => set("modalita", e.target.value)}>
+              <option value="">Seleziona...</option>
+              {MODALITA.map(m => <option key={m}>{m}</option>)}
+            </Select>
+          </Field>
+          <Field label="Effettuato da">
+            <Input value={form.da} onChange={e => set("da", e.target.value)} />
+          </Field>
+          <Field label="Note" style={{ gridColumn: "1/-1" }}>
+            <textarea value={form.note} onChange={e => set("note", e.target.value)} style={{ ...inputStyle, minHeight: 60, resize: "vertical" }} />
+          </Field>
+        </div>
+        {spesa.driveUrl && (
+          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 12 }}>
+            Il file già caricato su Drive resta collegato e non viene rinominato.
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+          <button onClick={onClose} style={btnSecondary}>Annulla</button>
+          <button onClick={salva} style={btnPrimary} disabled={saving || !valida}>
+            {saving ? "Salvataggio..." : "Salva modifiche"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
