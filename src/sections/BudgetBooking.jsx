@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { fmt, fmtDate, CATEGORIE, MODALITA } from "../utils/helpers";
+import { fmt, fmtDate, CATEGORIE, MODALITA, STATI_DOC } from "../utils/helpers";
+import { buildFileName, caricaSuDrive } from "../utils/driveUpload";
 import {
   SectionTitle, Field, Input, Select, Empty, MetricCard,
   Th, Td, tableStyle, btnDanger, btnSm, btnPrimary, btnSecondary, inputStyle,
@@ -7,7 +8,7 @@ import {
 } from "../components/UI";
 import { Badge, TurnoBadge, AutoreCell } from "../components/UI";
 
-export default function SezioneBudget({ db }) {
+export default function SezioneBudget({ db, showToast }) {
   const { itinerari, spese } = db;
   const [fIt,  setFIt]  = useState("");
   const [fT,   setFT]   = useState("");
@@ -28,6 +29,8 @@ export default function SezioneBudget({ db }) {
   const tot    = filtered.reduce((a, s) => a + s.importo, 0);
   const totPos = filtered.reduce((a, s) => a + (s.importo >= 0 ? s.importo : 0), 0);
   const totNeg = filtered.reduce((a, s) => a + (s.importo <  0 ? s.importo : 0), 0);
+
+  const inAttesa = spese.filter(s => s.statoDoc === "in_attesa").length;
 
   const deleteSpesa = async (s) => {
     if (!(await conferma(`Eliminare la spesa "${s.desc || s.fornitore}" da € ${fmt(s.importo)}?`))) return;
@@ -74,6 +77,7 @@ export default function SezioneBudget({ db }) {
         <MetricCard label="Spese"         value={`€ ${fmt(totPos)}`} />
         <MetricCard label="Rimborsi"      value={`€ ${fmt(Math.abs(totNeg))}`} color="#059669" />
         <MetricCard label="Righe"         value={filtered.length} />
+        <MetricCard label="Fatture in attesa" value={inAttesa} color={inAttesa ? "#92400E" : "#111827"} />
       </div>
 
       {/* Tabella */}
@@ -93,18 +97,17 @@ export default function SezioneBudget({ db }) {
                   <Td><span style={{ fontWeight: 500, fontSize: 12 }}>{s.itNome}</span></Td>
                   <Td><TurnoBadge turno={{ n: s.turnoN, in: s.turnoIn, out: s.turnoOut }} /></Td>
                   <Td><Badge cat={s.cat} /></Td>
-                  <Td>{s.desc}</Td>
+                  <Td>
+                    {s.tipo === "rimborso" && <RimborsoBadge spesa={s} spese={spese} />}
+                    {s.desc}
+                  </Td>
                   <Td style={{ color: "#6B7280" }}>{s.fornitore}</Td>
                   <Td><span style={{ fontWeight: 600, color: s.importo < 0 ? "#059669" : "#111827" }}>€ {fmt(s.importo)}</span></Td>
                   <Td style={{ color: "#6B7280", fontSize: 11 }}>{fmtDate(s.data)}</Td>
                   <Td style={{ color: "#9CA3AF", fontSize: 10 }}>{s.fattura}</Td>
                   <Td style={{ fontSize: 11 }}>{s.modalita}</Td>
                   <Td style={{ fontSize: 11 }}>{s.da}</Td>
-                  <Td>
-                    {s.driveUrl
-                      ? <a href={s.driveUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", textDecoration: "none", fontWeight: 500 }}>📄 Apri</a>
-                      : <span style={{ fontSize: 10, color: "#D1D5DB" }}>—</span>}
-                  </Td>
+                  <Td><DocCell spesa={s} db={db} showToast={showToast} /></Td>
                   <Td><AutoreCell item={s} nomeUtente={db.nomeUtente} /></Td>
                   <Td>
                     <div style={{ display: "flex", gap: 4 }}>
@@ -145,6 +148,7 @@ function ModificaSpesa({ spesa, db, onClose }) {
     .filter(t => !t.cancelled || String(t.id) === String(spesa.turnoId));
 
   const valida = form.itId && form.turnoId && form.cat && form.importo !== "";
+  const bloccaCollegamento = spesa.tipo === "rimborso";
 
   const salva = async () => {
     if (!valida) return;
@@ -160,21 +164,26 @@ function ModificaSpesa({ spesa, db, onClose }) {
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", width: 640, maxWidth: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>Modifica spesa</div>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 16 }}>{bloccaCollegamento ? "Modifica rimborso" : "Modifica spesa"}</div>
+        {bloccaCollegamento && (
+          <div style={{ fontSize: 11, color: "#6B7280", marginTop: -8, marginBottom: 12 }}>
+            Itinerario, turno e categoria seguono la spesa rimborsata. L'importo dei rimborsi è negativo.
+          </div>
+        )}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label="Itinerario">
-            <Select value={form.itId} onChange={e => { set("itId", e.target.value); set("turnoId", ""); }}>
+            <Select value={form.itId} onChange={e => { set("itId", e.target.value); set("turnoId", ""); }} disabled={bloccaCollegamento}>
               {db.itinerari.map(it => <option key={it.id} value={it.id}>{it.ni}</option>)}
             </Select>
           </Field>
           <Field label="Turno">
-            <Select value={form.turnoId} onChange={e => set("turnoId", e.target.value)}>
+            <Select value={form.turnoId} onChange={e => set("turnoId", e.target.value)} disabled={bloccaCollegamento}>
               <option value="">Seleziona turno...</option>
               {turni.map(t => <option key={t.id} value={t.id}>Turno {t.n} — {fmtDate(t.in)} → {fmtDate(t.out)}</option>)}
             </Select>
           </Field>
           <Field label="Categoria">
-            <Select value={form.cat} onChange={e => set("cat", e.target.value)}>
+            <Select value={form.cat} onChange={e => set("cat", e.target.value)} disabled={bloccaCollegamento}>
               {CATEGORIE.map(c => <option key={c}>{c}</option>)}
             </Select>
           </Field>
@@ -220,4 +229,54 @@ function ModificaSpesa({ spesa, db, onClose }) {
       </div>
     </div>
   );
+}
+
+// ── Badge rimborso con riferimento alla spesa originale ──────────────────────
+function RimborsoBadge({ spesa, spese }) {
+  const o = spese.find(x => x.id === spesa.origineId);
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <span style={{ background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0", borderRadius: 20, fontSize: 9, padding: "1px 6px", fontWeight: 700, marginRight: 4 }}>RIMBORSO</span>
+      <span style={{ fontSize: 10, color: "#9CA3AF" }}>
+        rif. {o ? `${o.desc || o.fornitore} € ${fmt(o.importo)}${o.fattura ? ` · fatt. ${o.fattura}` : ""}` : "spesa eliminata"}
+      </span>
+    </div>
+  );
+}
+
+// ── Colonna documento: link, stato, caricamento successivo ──────────────────
+function DocCell({ spesa, db, showToast }) {
+  const [uploading, setUploading] = useState(false);
+  const inputId = `doc-${spesa.id}`;
+
+  const carica = async (file) => {
+    setUploading(true);
+    try {
+      const nome = buildFileName(spesa.data, spesa.itNome, spesa.turnoIn, spesa.fornitore, spesa.fattura, file.name);
+      const url = await caricaSuDrive(file, nome);
+      if (await db.collegaDocumento(spesa.id, url)) showToast("Fattura caricata su Drive");
+    } catch (e) {
+      console.error(e);
+      showToast("Upload Drive non riuscito: " + e.message);
+    }
+    setUploading(false);
+  };
+
+  if (spesa.driveUrl) {
+    return <a href={spesa.driveUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", textDecoration: "none", fontWeight: 500, whiteSpace: "nowrap" }}>📄 Apri</a>;
+  }
+  if (spesa.statoDoc === "in_attesa") {
+    return (
+      <div style={{ whiteSpace: "nowrap" }}>
+        <div style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>⏳ In attesa</div>
+        <button onClick={() => document.getElementById(inputId).click()} style={{ ...btnSm, marginTop: 3 }} disabled={uploading}>
+          {uploading ? "Caricamento..." : "↑ Carica"}
+        </button>
+        <input id={inputId} type="file" style={{ display: "none" }}
+          accept=".pdf,.jpg,.jpeg,.png,.xlsx,.xls,.doc,.docx"
+          onChange={e => { if (e.target.files[0]) carica(e.target.files[0]); e.target.value = ""; }} />
+      </div>
+    );
+  }
+  return <span style={{ fontSize: 10, color: "#9CA3AF", whiteSpace: "nowrap" }}>{STATI_DOC[spesa.statoDoc] || "—"}</span>;
 }

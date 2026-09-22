@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fmt, fmtDate, CAT_COLORS } from "../utils/helpers";
+import { fmt, fmtDate, CAT_COLORS, STATI_DOC } from "../utils/helpers";
 import {
   SectionTitle, Field, Select, Card, Empty, MetricCard,
   Th, Td, tableStyle, Badge,
@@ -92,7 +92,7 @@ export default function SezioneRiepilogo({ itinerari, spese }) {
                         <Td>
                           {s.driveUrl
                             ? <a href={s.driveUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", textDecoration: "none" }}>📄 Apri</a>
-                            : <span style={{ color: "#D1D5DB", fontSize: 10 }}>—</span>}
+                            : <span style={{ color: "#9CA3AF", fontSize: 10 }}>{STATI_DOC[s.statoDoc] || "—"}</span>}
                         </Td>
                       </tr>
                     ))}

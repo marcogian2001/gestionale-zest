@@ -22,3 +22,18 @@ export function fmtDate(d) {
 export function newId() {
   return Date.now() + Math.random();
 }
+
+export const STATI_DOC = {
+  caricato:         "Caricato",
+  in_attesa:        "Fattura in attesa",
+  non_recuperabile: "Non recuperabile",
+  senza_storno:     "Senza doc. storno",
+};
+
+// Importo ancora rimborsabile di un pagamento (importo − rimborsi già registrati)
+export function residuoRimborsabile(pagamento, spese) {
+  const rimborsato = spese
+    .filter(s => s.tipo === "rimborso" && s.origineId === pagamento.id)
+    .reduce((a, s) => a + Math.abs(s.importo), 0);
+  return Math.round((pagamento.importo - rimborsato) * 100) / 100;
+}

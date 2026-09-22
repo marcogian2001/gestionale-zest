@@ -10,6 +10,7 @@ import SezioneImpostazioni from "./sections/Impostazioni";
 import SezioneUtenti       from "./sections/Utenti";
 import SezioneRegistro     from "./sections/Registro";
 import SezioneCestino      from "./sections/Cestino";
+import SezioneContabilita  from "./sections/Contabilita";
 import LoginPage           from "./components/LoginPage";
 import { Toast, ConfirmHost } from "./components/UI";
 
@@ -18,6 +19,7 @@ const NAV = [
   { id: "booking",      label: "Input booking" },
   { id: "budget",       label: "Budget booking" },
   { id: "riepilogo",    label: "Riepilogo per itinerario" },
+  { id: "contabilita",  label: "Contabilità" },
   { id: "utenti",       label: "Gestione utenti",  bottom: false },
   { id: "registro",     label: "Registro attività" },
   { id: "cestino",      label: "🗑 Cestino" },
@@ -58,7 +60,8 @@ export default function App() {
         </div>
 
         <div style={{ display:"flex", flexDirection:"column", flex:1 }}>
-          {navTop.map(item => <NavButton key={item.id} item={item} active={section===item.id} onClick={()=>setSection(item.id)} />)}
+          {navTop.map(item => <NavButton key={item.id} item={item} active={section===item.id} onClick={()=>setSection(item.id)}
+            badge={item.id === "contabilita" ? db.spese.filter(s => s.alert && !s.alertRisoltoAt).length : 0} />)}
 
           <div style={{ marginTop:"auto" }}>
             {navBottom.map(item => <NavButton key={item.id} item={item} active={section===item.id} onClick={()=>setSection(item.id)} />)}
@@ -78,12 +81,13 @@ export default function App() {
           <div style={{ padding: "3rem", textAlign: "center", color: "#9CA3AF" }}>Caricamento dati...</div>
         ) : <>
         {section==="itinerari"    && <SezioneItinerari    db={db} showToast={showToast} />}
-        {section==="booking"      && <SezioneInputBooking db={db} showToast={showToast} />}
-        {section==="budget"       && <SezioneBudget       db={db} />}
+        {section==="booking"      && <SezioneInputBooking db={db} user={user} showToast={showToast} />}
+        {section==="budget"       && <SezioneBudget       db={db} showToast={showToast} />}
         {section==="riepilogo"    && <SezioneRiepilogo    itinerari={db.itinerari} spese={db.spese} />}
         {section==="impostazioni" && <SezioneImpostazioni db={db} showToast={showToast} />}
         {section==="registro"     && <SezioneRegistro     db={db} showToast={showToast} />}
         {section==="cestino"      && <SezioneCestino      db={db} showToast={showToast} />}
+        {section==="contabilita"  && <SezioneContabilita  db={db} showToast={showToast} />}
         {section==="utenti"       && <SezioneUtenti utenti={utenti} currentUser={user} onCrea={creaUtente} onModifica={modificaUtente} onReimposta={reimpostaPassword} onElimina={eliminaUtente} showToast={showToast} />}
         </>}
       </main>
@@ -94,10 +98,11 @@ export default function App() {
   );
 }
 
-function NavButton({ item, active, onClick }) {
+function NavButton({ item, active, onClick, badge }) {
   return (
     <button onClick={onClick} style={{ display:"block", width:"100%", textAlign:"left", padding:"9px 1.25rem", cursor:"pointer", fontSize:13, fontWeight:active?600:400, color:active?"#111827":"#6B7280", background:active?"#F3F4F6":"transparent", border:"none", borderLeft:`3px solid ${active?"#FF6B2B":"transparent"}`, fontFamily:"inherit" }}>
       {item.label}
+      {badge > 0 && <span style={{ marginLeft: 6, background: "#EF4444", color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "1px 6px" }}>{badge}</span>}
     </button>
   );
 }

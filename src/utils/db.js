@@ -25,6 +25,8 @@ function mapSpesa(row) {
     data: row.data, fattura: row.fattura,
     modalita: row.modalita, da: row.effettuato_da, note: row.note,
     driveUrl: row.drive_url,
+    tipo: row.tipo, origineId: row.spesa_origine_id, statoDoc: row.stato_doc,
+    alert: row.alert_contabilita, alertRisoltoAt: row.alert_risolto_at, alertRisoltoBy: row.alert_risolto_by,
     createdBy: row.created_by, createdAt: row.created_at,
     updatedBy: row.updated_by, updatedAt: row.updated_at,
     deletedBy: row.deleted_by, deletedAt: row.deleted_at,
@@ -118,7 +120,16 @@ export function useZestData(enabled, showToast) {
     importo: s.importo, data: s.data || null, fattura: s.fattura,
     modalita: s.modalita, effettuato_da: s.da, note: s.note,
     drive_url: s.driveUrl,
+    tipo: s.tipo || "pagamento", spesa_origine_id: s.origineId || null,
+    stato_doc: s.statoDoc || "caricato", alert_contabilita: s.alert || null,
   }));
+
+  // Carica in un secondo momento il documento di una spesa "in attesa"
+  const collegaDocumento = (id, driveUrl) =>
+    run(supabase.from("spese").update({ drive_url: driveUrl, stato_doc: "caricato" }).eq("id", id));
+
+  const risolviAlert = (id, risolto = true) =>
+    run(supabase.from("spese").update({ alert_risolto_at: risolto ? new Date().toISOString() : null }).eq("id", id));
 
   const modificaSpesa = (id, s) => run(supabase.from("spese").update({
     itinerario_id: s.itId, turno_id: s.turnoId,
@@ -145,6 +156,6 @@ export function useZestData(enabled, showToast) {
     itinerari, spese, impostazioni, loading, reload, nomeUtente,
     ripristina, annullaAzione,
     creaItinerario, eliminaItinerario, setTurnoAnnullato, aggiungiTurni,
-    creaSpesa, modificaSpesa, eliminaSpesa, salvaImpostazione,
+    creaSpesa, modificaSpesa, eliminaSpesa, collegaDocumento, risolviAlert, salvaImpostazione,
   };
 }

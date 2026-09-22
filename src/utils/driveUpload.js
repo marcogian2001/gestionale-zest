@@ -73,3 +73,9 @@ export async function uploadToDrive(file, fileName) {
     reader.readAsDataURL(file);
   });
 }
+
+// ── Login Google (se serve) + upload ──────────────────────────────────────────
+export async function caricaSuDrive(file, fileName) {
+  await ensureGoogleToken();
+  return uploadToDrive(file, fileName);
+}

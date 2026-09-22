@@ -19,6 +19,7 @@ const CAMPI = {
   cancelled: "Annullato", cat: "Categoria", fornitore: "Fornitore", descrizione: "Descrizione",
   importo: "Importo", data: "Data pagamento", fattura: "Fattura", modalita: "Modalità",
   effettuato_da: "Effettuato da", note: "Note", drive_url: "File Drive",
+  stato_doc: "Stato documento", alert_contabilita: "Alert contabilità", alert_risolto_at: "Alert gestito il",
 };
 
 function valore(v) {
