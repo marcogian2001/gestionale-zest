@@ -8,6 +8,24 @@ import {
 } from "../components/UI";
 import { Badge, TurnoBadge, AutoreCell } from "../components/UI";
 
+// Voci del filtro «Documento»: le fatture e gli storni in attesa si distinguono
+// dal tipo di riga, perché nel database condividono lo stesso stato.
+const FILTRI_DOC = {
+  caricato:           "Caricato",
+  fattura_in_attesa:  "Fattura in attesa",
+  storno_in_attesa:   "Storno in attesa",
+  non_recuperabile:   "Fattura non recuperabile",
+  senza_storno:       "Storno non recuperabile",
+};
+
+function filtroDoc(s, filtro) {
+  switch (filtro) {
+    case "fattura_in_attesa": return s.statoDoc === "in_attesa" && s.tipo !== "rimborso";
+    case "storno_in_attesa":  return s.statoDoc === "in_attesa" && s.tipo === "rimborso";
+    default:                  return s.statoDoc === filtro;
+  }
+}
+
 export default function SezioneBudget({ db, user, showToast }) {
   const { itinerari, spese } = db;
   const [fIt,  setFIt]  = useState("");
@@ -24,7 +42,7 @@ export default function SezioneBudget({ db, user, showToast }) {
     if (fIt  && String(s.itId) !== fIt)       return false;
     if (fT   && s.turnoN !== parseInt(fT))    return false;
     if (fCat && s.cat !== fCat)               return false;
-    if (fDoc && s.statoDoc !== fDoc)          return false;
+    if (fDoc && !filtroDoc(s, fDoc))          return false;
     return true;
   });
 
@@ -67,7 +85,7 @@ export default function SezioneBudget({ db, user, showToast }) {
           <Field label="Documento">
             <Select value={fDoc} onChange={e => setFDoc(e.target.value)}>
               <option value="">Tutti</option>
-              {Object.entries(STATI_DOC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              {Object.entries(FILTRI_DOC).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </Select>
           </Field>
         </div>
@@ -87,7 +105,7 @@ export default function SezioneBudget({ db, user, showToast }) {
         <MetricCard label="Spese"         value={`€ ${fmt(totPos)}`} />
         <MetricCard label="Rimborsi"      value={`€ ${fmt(Math.abs(totNeg))}`} color="#059669" />
         <MetricCard label="Righe"         value={filtered.length} />
-        <MetricCard label="Fatture in attesa" value={inAttesa} color={inAttesa ? "#92400E" : "#111827"} />
+        <MetricCard label="Documenti in attesa" value={inAttesa} color={inAttesa ? "#92400E" : "#111827"} />
       </div>
 
       {/* Tabella */}

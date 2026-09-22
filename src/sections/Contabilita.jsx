@@ -31,7 +31,7 @@ export default function SezioneContabilita({ db, showToast }) {
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
         <MetricCard label="Alert da gestire"  value={aperti.length}   color={aperti.length ? "#B91C1C" : "#111827"} />
-        <MetricCard label="Fatture in attesa" value={inAttesa.length} color={inAttesa.length ? "#92400E" : "#111827"} />
+        <MetricCard label="Documenti in attesa" value={inAttesa.length} color={inAttesa.length ? "#92400E" : "#111827"} />
       </div>
 
       <SectionSubTitle>Alert da gestire</SectionSubTitle>
@@ -68,24 +68,25 @@ export default function SezioneContabilita({ db, showToast }) {
         </div>
       )}
 
-      <SectionSubTitle>Fatture in attesa</SectionSubTitle>
-      {inAttesa.length === 0 ? <Empty>Nessuna fattura in attesa</Empty> : (
+      <SectionSubTitle>Documenti in attesa</SectionSubTitle>
+      {inAttesa.length === 0 ? <Empty>Nessun documento in attesa</Empty> : (
         <div style={{ overflowX: "auto" }}>
           <table style={tableStyle}>
             <thead>
-              <tr>{["Itinerario", "Cat.", "Descrizione", "Importo", "Fattura", "Data pag.", "Inserita da"].map(h => <Th key={h}>{h}</Th>)}</tr>
+              <tr>{["Itinerario", "Cat.", "Descrizione", "Importo", "Documento", "Tipo", "Data pag.", "Inserito da"].map(h => <Th key={h}>{h}</Th>)}</tr>
             </thead>
             <tbody>
               {inAttesa.map(s => (
                 <tr key={s.id}>
                   {rigaSpesa(s)}
+                  <Td style={{ fontSize: 11 }}>{s.tipo === "rimborso" ? "Storno" : "Fattura"}</Td>
                   <Td style={{ fontSize: 11, color: "#6B7280" }}>{fmtDate(s.data)}</Td>
                   <Td style={{ fontSize: 11 }}>{db.nomeUtente(s.createdBy)}</Td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>Le fatture si caricano da Budget booking con il pulsante «↑ Carica».</div>
+          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>I documenti si caricano da Budget booking con il pulsante «↑ Carica».</div>
         </div>
       )}
 

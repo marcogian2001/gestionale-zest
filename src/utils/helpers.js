@@ -25,7 +25,7 @@ export function newId() {
 
 export const STATI_DOC = {
   caricato:         "Caricato",
-  in_attesa:        "Fattura in attesa",
+  in_attesa:        "In attesa",
   non_recuperabile: "Non recuperabile",
   senza_storno:     "Storno non recuperabile",
 };
