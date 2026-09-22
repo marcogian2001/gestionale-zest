@@ -2,7 +2,7 @@
 export const DRIVE_FOLDER_ID = "18emYlCWDl0XRTrvA8G2mHo6ZrbuEA6as"; // Fatture Booking
 
 // ── Nome file automatico ──────────────────────────────────────────────────────
-// DD.MM.YYYY(pagamento)_ITINERARIO_DD.MM.YYYY(inizio turno)_FORNITORE_FATTURA.ext
+// DD.MM.YYYY(data fattura)_ITINERARIO_DD.MM.YYYY(inizio turno)_FORNITORE_FATTURA.ext
 export function buildFileName(data, itNome, turnoIn, fornitore, fattura, originalName) {
   const ext = originalName.includes(".") ? originalName.split(".").pop() : "pdf";
   const fmtD = (v) => {

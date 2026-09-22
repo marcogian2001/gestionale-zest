@@ -9,7 +9,8 @@ import {
 const FORM_EMPTY = {
   itId: "", turnoRaw: "", tipo: "pagamento", origineId: "",
   cat: "", fornitore: "", desc: "",
-  importo: "", data: "", fattura: "", modalita: "", note: "",
+  importo: "", data: "", dataFattura: "", fattura: "", modalita: "", note: "",
+  stessaData: false,
   nonMia: false, da: "",
   inAttesa: false, nonRecuperabile: false, senzaStorno: false,
 };
@@ -23,6 +24,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
   const [previewName, setPreviewName] = useState("");
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const labelCheck = { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151", cursor: "pointer" };
   const rimborso = form.tipo === "rimborso";
 
   const it    = itinerari.find(x => String(x.id) === form.itId);
@@ -38,6 +40,9 @@ export default function SezioneInputBooking({ db, user, showToast }) {
   const nomeDa   = form.nonMia ? form.da : (user?.nome || "");
   const docRimb  = origine ? `Rimb-doc-${origine.fattura || "senza-numero"}` : "";
   const fattura  = rimborso && form.senzaStorno ? docRimb : form.fattura;
+  // Senza documento non esiste una data fattura, quindi niente da copiare
+  const senzaDoc = form.inAttesa || form.nonRecuperabile || form.senzaStorno;
+  const dataPag  = form.stessaData && !senzaDoc ? form.dataFattura : form.data;
   const fornitore = rimborso ? (origine?.fornitore || "") : form.fornitore;
 
   // Scegliendo la spesa di riferimento si propone il rimborso totale
@@ -52,8 +57,8 @@ export default function SezioneInputBooking({ db, user, showToast }) {
 
   useEffect(() => {
     if (!file) { setPreviewName(""); return; }
-    setPreviewName(buildFileName(form.data, it?.ni || "", turno?.in, fornitore, fattura, file.name));
-  }, [file, form.data, it, turno, fornitore, fattura]);
+    setPreviewName(buildFileName(form.dataFattura, it?.ni || "", turno?.in, fornitore, fattura, file.name));
+  }, [file, form.dataFattura, it, turno, fornitore, fattura]);
 
   const reset = () => { setForm(FORM_EMPTY); setFile(null); setErrore(""); setPreviewName(""); };
 
@@ -65,9 +70,14 @@ export default function SezioneInputBooking({ db, user, showToast }) {
   // Le opzioni "senza documento" si escludono a vicenda e tolgono il file
   const flagDoc = (k, v) => {
     if (v) setFile(null);
-    setForm(f => ({ ...f, inAttesa: false, nonRecuperabile: false, senzaStorno: false, [k]: v }));
+    setForm(f => ({
+      ...f, inAttesa: false, nonRecuperabile: false, senzaStorno: false, [k]: v,
+      ...(v ? { fattura: "", dataFattura: "", stessaData: false } : {}),
+    }));
   };
 
+  // Tutti i campi sono obbligatori tranne le note; le spunte «senza documento»
+  // sostituiscono numero e data del documento.
   const valida = () => {
     if (!form.itId || !turno) return "Seleziona itinerario e turno";
     if (rimborso) {
@@ -76,12 +86,25 @@ export default function SezioneInputBooking({ db, user, showToast }) {
       if (!(imp > 0)) return "Inserisci l'importo rimborsato";
       if (imp > residuo + 0.001) return `L'importo supera quanto ancora rimborsabile (€ ${fmt(residuo)})`;
       if (!file && !form.senzaStorno) return "Carica il documento di storno oppure seleziona «Non ho documento di storno»";
+      if (!form.senzaStorno) {
+        if (!form.fattura.trim()) return "Inserisci il numero del documento di storno";
+        if (!form.dataFattura)    return "Inserisci la data del documento di storno";
+      }
+      if (!dataPag) return "Inserisci la data del rimborso";
     } else {
       if (!form.cat) return "Seleziona la categoria";
+      if (!form.fornitore.trim()) return "Inserisci il fornitore";
       if (form.importo === "") return "Inserisci l'importo";
       if (!file && !form.inAttesa && !form.nonRecuperabile) return "Carica la fattura oppure seleziona «Fattura in attesa» o «Fattura non recuperabile»";
+      if (!senzaDoc) {
+        if (!form.fattura.trim()) return "Inserisci il numero della fattura";
+        if (!form.dataFattura)    return "Inserisci la data della fattura";
+      }
+      if (!dataPag) return "Inserisci la data di pagamento";
     }
-    if (form.nonMia && !form.da.trim()) return "Indica chi ha effettuato il pagamento";
+    if (!form.desc.trim())     return "Inserisci la descrizione";
+    if (!form.modalita)        return rimborso ? "Seleziona la modalità del rimborso" : "Seleziona la modalità di pagamento";
+    if (!nomeDa.trim())        return "Indica chi ha effettuato il pagamento";
     return "";
   };
 
@@ -94,7 +117,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
     let driveUrl = null;
     if (file) {
       try {
-        driveUrl = await caricaSuDrive(file, buildFileName(form.data, it.ni, turno.in, fornitore, fattura, file.name));
+        driveUrl = await caricaSuDrive(file, buildFileName(form.dataFattura, it.ni, turno.in, fornitore, fattura, file.name));
       } catch (e) {
         console.error(e);
         setSaving(false);
@@ -124,7 +147,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
       fornitore,
       desc: form.desc,
       importo: rimborso ? -Math.abs(importo) : importo,
-      data: form.data, fattura,
+      data: dataPag, dataFattura: form.dataFattura || null, fattura,
       modalita: form.modalita, da: nomeDa, note: form.note,
       driveUrl,
       statoDoc: driveUrl ? "caricato"
@@ -138,8 +161,6 @@ export default function SezioneInputBooking({ db, user, showToast }) {
     showToast(rimborso ? "Rimborso registrato" : driveUrl ? "Spesa registrata + file caricato su Drive" : "Spesa registrata");
     reset();
   };
-
-  const labelCheck = { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151", cursor: "pointer" };
 
   return (
     <div>
@@ -226,8 +247,28 @@ export default function SezioneInputBooking({ db, user, showToast }) {
             )}
           </Field>
 
+          <Field label={rimborso ? "Data documento di storno" : "Data fattura"}>
+            <Input
+              type="date" value={form.dataFattura}
+              onChange={e => set("dataFattura", e.target.value)}
+              disabled={senzaDoc}
+            />
+            {senzaDoc && <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 3 }}>Nessun documento</div>}
+          </Field>
+
           <Field label={rimborso ? "Data rimborso" : "Data pagamento"}>
-            <Input type="date" value={form.data} onChange={e => set("data", e.target.value)} />
+            <Input
+              type="date" value={dataPag}
+              onChange={e => set("data", e.target.value)}
+              disabled={form.stessaData && !senzaDoc}
+            />
+            <label style={{ ...labelCheck, marginTop: 6, opacity: senzaDoc ? 0.5 : 1 }}>
+              <input
+                type="checkbox" checked={form.stessaData && !senzaDoc} disabled={senzaDoc}
+                onChange={e => setForm(f => ({ ...f, stessaData: e.target.checked, data: e.target.checked ? f.dataFattura : f.data }))}
+              />
+              Stessa data del documento
+            </label>
           </Field>
 
           <Field label={rimborso ? "N. documento di storno" : "N. Fattura / Ricevuta"}>

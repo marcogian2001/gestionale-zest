@@ -17,7 +17,7 @@ const TABELLE = { itinerari: "Itinerari", turni: "Turni", spese: "Spese" };
 const CAMPI = {
   ni: "Nome interno", ns: "Nome sito", n: "Turno", data_in: "Data in", data_out: "Data out",
   cancelled: "Annullato", cat: "Categoria", fornitore: "Fornitore", descrizione: "Descrizione",
-  importo: "Importo", data: "Data pagamento", fattura: "Fattura", modalita: "Modalità",
+  importo: "Importo", data: "Data pagamento", data_fattura: "Data fattura", fattura: "Fattura", modalita: "Modalità",
   effettuato_da: "Effettuato da", note: "Note", drive_url: "File Drive",
   stato_doc: "Stato documento", alert_contabilita: "Alert contabilità", alert_risolto_at: "Alert gestito il",
 };

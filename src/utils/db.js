@@ -22,7 +22,7 @@ function mapSpesa(row) {
     turnoN: row.turni?.n, turnoIn: row.turni?.data_in, turnoOut: row.turni?.data_out,
     cat: row.cat, fornitore: row.fornitore, desc: row.descrizione,
     importo: Number(row.importo),
-    data: row.data, fattura: row.fattura,
+    data: row.data, dataFattura: row.data_fattura, fattura: row.fattura,
     modalita: row.modalita, da: row.effettuato_da, note: row.note,
     driveUrl: row.drive_url,
     tipo: row.tipo, origineId: row.spesa_origine_id, statoDoc: row.stato_doc,
@@ -117,7 +117,7 @@ export function useZestData(enabled, showToast) {
   const creaSpesa = (s) => run(supabase.from("spese").insert({
     itinerario_id: s.itId, turno_id: s.turnoId,
     cat: s.cat, fornitore: s.fornitore, descrizione: s.desc,
-    importo: s.importo, data: s.data || null, fattura: s.fattura,
+    importo: s.importo, data: s.data || null, data_fattura: s.dataFattura || null, fattura: s.fattura,
     modalita: s.modalita, effettuato_da: s.da, note: s.note,
     drive_url: s.driveUrl,
     tipo: s.tipo || "pagamento", spesa_origine_id: s.origineId || null,
@@ -125,8 +125,11 @@ export function useZestData(enabled, showToast) {
   }));
 
   // Carica in un secondo momento il documento di una spesa "in attesa"
-  const collegaDocumento = (id, driveUrl) =>
-    run(supabase.from("spese").update({ drive_url: driveUrl, stato_doc: "caricato" }).eq("id", id));
+  const collegaDocumento = (id, driveUrl, { fattura, dataFattura }) =>
+    run(supabase.from("spese").update({
+      drive_url: driveUrl, stato_doc: "caricato",
+      fattura, data_fattura: dataFattura,
+    }).eq("id", id));
 
   const risolviAlert = (id, risolto = true) =>
     run(supabase.from("spese").update({ alert_risolto_at: risolto ? new Date().toISOString() : null }).eq("id", id));
@@ -134,7 +137,7 @@ export function useZestData(enabled, showToast) {
   const modificaSpesa = (id, s) => run(supabase.from("spese").update({
     itinerario_id: s.itId, turno_id: s.turnoId,
     cat: s.cat, fornitore: s.fornitore, descrizione: s.desc,
-    importo: s.importo, data: s.data || null, fattura: s.fattura,
+    importo: s.importo, data: s.data || null, data_fattura: s.dataFattura || null, fattura: s.fattura,
     modalita: s.modalita, effettuato_da: s.da, note: s.note,
   }).eq("id", id));
 
