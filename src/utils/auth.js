@@ -5,11 +5,15 @@ import { supabase } from "./supabase";
 export const RUOLI = {
   SUPER_ADMIN: "super_admin",
   ADMIN:       "admin",
+  CONTABILITA: "contabilita",
+  FINANCE:     "finance",
 };
 
 export const RUOLI_LABEL = {
   super_admin: "Super Admin",
   admin:       "Admin / Supervisore",
+  contabilita: "Contabilità",
+  finance:     "Finance",
 };
 
 // ── Permessi per ruolo ────────────────────────────────────────────────────────
@@ -17,6 +21,9 @@ export const RUOLI_LABEL = {
 export const PERMESSI = {
   super_admin: ["itinerari", "booking", "budget", "riepilogo", "contabilita", "utenti", "registro", "cestino", "impostazioni"],
   admin:       ["itinerari", "booking", "budget", "riepilogo"],
+  // Provvisorio, in attesa della definizione completa dei permessi per ruolo
+  contabilita: ["contabilita", "budget", "riepilogo"],
+  finance:     ["contabilita", "budget", "riepilogo"],
 };
 
 export function canAccess(ruolo, sezione) {

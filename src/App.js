@@ -41,8 +41,10 @@ export default function App() {
   const clientId = db.impostazioni.google_client_id || "";
 
   useEffect(() => { window._googleClientId = clientId; }, [clientId]);
-  useEffect(() => { if (user) setSection("itinerari"); }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (user && !canAccess(user.ruolo, section)) setSection("itinerari"); }, [user, section]);
+  // Prima sezione accessibile per il ruolo dell'utente
+  const home = user ? (NAV.find(x => canAccess(user.ruolo, x.id))?.id || "itinerari") : "itinerari";
+  useEffect(() => { if (user) setSection(home); }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (user && !canAccess(user.ruolo, section)) setSection(home); }, [user, section, home]);
 
   if (!ready) return <div style={{ padding: "3rem", textAlign: "center", color: "#9CA3AF", fontFamily: "'DM Sans','Segoe UI',system-ui,sans-serif" }}>Caricamento...</div>;
   if (!user)  return <LoginPage onLogin={login} loading={authLoading} error={authError} />;

@@ -108,6 +108,9 @@ export default function SezioneInputBooking({ db, user, showToast }) {
     if (rimborso && form.senzaStorno) {
       alert.push(`Rimborso senza documento di storno: registrare un documento fittizio ai fini IVA (rif. fattura ${origine.fattura || "senza numero"}).`);
     }
+    if (!rimborso && form.nonRecuperabile) {
+      alert.push("Fattura non recuperabile: verificare il trattamento contabile della spesa senza documento.");
+    }
     if (rimborso && origine.statoDoc === "in_attesa") {
       alert.push("Rimborso su una spesa con fattura ancora in attesa: verificare la situazione.");
     }
@@ -321,7 +324,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
                   </label>
                   <label style={labelCheck}>
                     <input type="checkbox" checked={form.nonRecuperabile} onChange={e => flagDoc("nonRecuperabile", e.target.checked)} />
-                    Fattura non recuperabile
+                    Fattura non recuperabile <span style={{ color: "#9CA3AF" }}>(invia un alert alla contabilità)</span>
                   </label>
                 </>
               )}

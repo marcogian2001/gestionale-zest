@@ -9,7 +9,7 @@ const cors = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const RUOLI = ["super_admin", "admin"];
+const RUOLI = ["super_admin", "admin", "contabilita", "finance"];
 
 function risposta(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
