@@ -15,7 +15,7 @@ export const RUOLI_LABEL = {
 // ── Permessi per ruolo ────────────────────────────────────────────────────────
 // Definisce cosa vede ogni ruolo nel menu
 export const PERMESSI = {
-  super_admin: ["itinerari", "booking", "budget", "riepilogo", "utenti", "impostazioni"],
+  super_admin: ["itinerari", "booking", "budget", "riepilogo", "utenti", "registro", "cestino", "impostazioni"],
   admin:       ["itinerari", "booking", "budget", "riepilogo"],
 };
 

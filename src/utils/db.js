@@ -5,6 +5,9 @@ import { supabase } from "./supabase";
 function mapItinerario(row) {
   return {
     id: row.id, ni: row.ni, ns: row.ns,
+    createdBy: row.created_by, createdAt: row.created_at,
+    updatedBy: row.updated_by, updatedAt: row.updated_at,
+    deletedBy: row.deleted_by, deletedAt: row.deleted_at,
     turni: (row.turni || [])
       .map(t => ({ id: t.id, n: t.n, in: t.data_in, out: t.data_out, cancelled: t.cancelled }))
       .sort((a, b) => a.n - b.n),
@@ -22,8 +25,13 @@ function mapSpesa(row) {
     data: row.data, fattura: row.fattura,
     modalita: row.modalita, da: row.effettuato_da, note: row.note,
     driveUrl: row.drive_url,
+    createdBy: row.created_by, createdAt: row.created_at,
+    updatedBy: row.updated_by, updatedAt: row.updated_at,
+    deletedBy: row.deleted_by, deletedAt: row.deleted_at,
   };
 }
+
+export { mapItinerario, mapSpesa };
 
 function messaggioErrore(error) {
   if (error?.code === "23503") return "Impossibile eliminare: ci sono spese collegate";
@@ -37,21 +45,26 @@ export function useZestData(enabled, showToast) {
   const [itinerari,  setItinerari]  = useState([]);
   const [spese,      setSpese]      = useState([]);
   const [impostazioni, setImpostazioni] = useState({});
+  const [nomiUtenti, setNomiUtenti] = useState({});
   const [loading,    setLoading]    = useState(true);
 
   const reload = useCallback(async () => {
-    const [it, sp, imp] = await Promise.all([
+    const [it, sp, imp, pr] = await Promise.all([
       supabase.from("itinerari")
-        .select("id, ni, ns, turni(id, n, data_in, data_out, cancelled)")
+        .select("*, turni(id, n, data_in, data_out, cancelled, deleted_at)")
+        .is("deleted_at", null)
         .order("created_at"),
       supabase.from("spese")
         .select("*, itinerari(ni), turni(n, data_in, data_out)")
+        .is("deleted_at", null)
         .order("created_at"),
       supabase.from("impostazioni").select("chiave, valore"),
+      supabase.from("profili").select("id, nome"),
     ]);
-    const err = it.error || sp.error || imp.error;
+    const err = it.error || sp.error || imp.error || pr.error;
     if (err) { showToast("Errore caricamento dati: " + err.message); setLoading(false); return; }
-    setItinerari(it.data.map(mapItinerario));
+    setItinerari(it.data.map(r => mapItinerario({ ...r, turni: r.turni.filter(t => !t.deleted_at) })));
+    setNomiUtenti(Object.fromEntries(pr.data.map(p => [p.id, p.nome])));
     setSpese(sp.data.map(mapSpesa));
     setImpostazioni(Object.fromEntries(imp.data.map(r => [r.chiave, r.valore])));
     setLoading(false);
@@ -84,7 +97,9 @@ export function useZestData(enabled, showToast) {
     ));
   };
 
-  const eliminaItinerario = (id) => run(supabase.from("itinerari").delete().eq("id", id));
+  // Le eliminazioni spostano nel cestino (deleted_at), non cancellano davvero.
+  const eliminaItinerario = (id) =>
+    run(supabase.from("itinerari").update({ deleted_at: new Date().toISOString() }).eq("id", id));
 
   const setTurnoAnnullato = (turnoId, cancelled) =>
     run(supabase.from("turni").update({ cancelled }).eq("id", turnoId));
@@ -105,14 +120,23 @@ export function useZestData(enabled, showToast) {
     drive_url: s.driveUrl,
   }));
 
-  const eliminaSpesa = (id) => run(supabase.from("spese").delete().eq("id", id));
+  const eliminaSpesa = (id) =>
+    run(supabase.from("spese").update({ deleted_at: new Date().toISOString() }).eq("id", id));
+
+  const ripristina = (tabella, id) =>
+    run(supabase.from(tabella).update({ deleted_at: null }).eq("id", id));
+
+  const annullaAzione = (logId) => run(supabase.rpc("annulla_azione", { p_log_id: logId }));
 
   // ── Impostazioni ───────────────────────────────────────────────────────────
   const salvaImpostazione = (chiave, valore) =>
     run(supabase.from("impostazioni").upsert({ chiave, valore }));
 
+  const nomeUtente = (id) => (id && nomiUtenti[id]) || "—";
+
   return {
-    itinerari, spese, impostazioni, loading,
+    itinerari, spese, impostazioni, loading, reload, nomeUtente,
+    ripristina, annullaAzione,
     creaItinerario, eliminaItinerario, setTurnoAnnullato, aggiungiTurni,
     creaSpesa, eliminaSpesa, salvaImpostazione,
   };

@@ -2,13 +2,16 @@
 export const DRIVE_FOLDER_ID = "18emYlCWDl0XRTrvA8G2mHo6ZrbuEA6as"; // Fatture Booking
 
 // ── Nome file automatico ──────────────────────────────────────────────────────
-export function buildFileName(data, itNome, fornitore, fattura, originalName) {
+// DD.MM.YYYY(pagamento)_ITINERARIO_DD.MM.YYYY(inizio turno)_FORNITORE_FATTURA.ext
+export function buildFileName(data, itNome, turnoIn, fornitore, fattura, originalName) {
   const ext = originalName.includes(".") ? originalName.split(".").pop() : "pdf";
-  const d = data
-    ? (() => { const [y, m, day] = data.split("-"); return `${day}.${m}.${y}`; })()
-    : "00.00.0000";
+  const fmtD = (v) => {
+    if (!v) return "00.00.0000";
+    const [y, m, day] = v.split("-");
+    return `${day}.${m}.${y}`;
+  };
   const clean = (s) => (s || "").replace(/[^a-zA-Z0-9\s\-_]/g, "").trim().replace(/\s+/g, "_");
-  return `${d}_${clean(itNome)}_${clean(fornitore)}_${clean(fattura)}.${ext}`;
+  return `${fmtD(data)}_${clean(itNome)}_${fmtD(turnoIn)}_${clean(fornitore)}_${clean(fattura)}.${ext}`;
 }
 
 // ── Ottieni token Google OAuth ────────────────────────────────────────────────

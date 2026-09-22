@@ -128,12 +128,13 @@ export function Toast({ msg }) {
 
 // ── Finestra di conferma ──────────────────────────────────────────────────────
 // Uso: if (!(await conferma("Eliminare?"))) return;
+//      conferma("Annullare?", "Conferma") per un pulsante diverso da "Elimina"
 // Richiede <ConfirmHost /> montato una volta in App.
 let apriConferma = null;
 
-export function conferma(msg) {
+export function conferma(msg, label = "Elimina") {
   return new Promise(resolve => {
-    if (apriConferma) apriConferma({ msg, resolve });
+    if (apriConferma) apriConferma({ msg, label, resolve });
     else resolve(window.confirm(msg));
   });
 }
@@ -149,9 +150,26 @@ export function ConfirmHost() {
         <div style={{ fontSize: 14, color: "#111827", lineHeight: 1.5, marginBottom: 20 }}>{dialog.msg}</div>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button onClick={() => chiudi(false)} style={btnSecondary} autoFocus>Annulla</button>
-          <button onClick={() => chiudi(true)} style={{ ...btnBase, background: "#EF4444", color: "#fff" }}>Elimina</button>
+          <button onClick={() => chiudi(true)} style={{ ...btnBase, background: dialog.label === "Elimina" ? "#EF4444" : "#111827", color: "#fff" }}>{dialog.label}</button>
         </div>
       </div>
     </div>
   );
 }
+
+// ── Chi ha creato / modificato ────────────────────────────────────────────────
+function fmtDataOra(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+export function AutoreCell({ item, nomeUtente, inline }) {
+  const modificato = item.updatedAt && item.updatedBy;
+  const style = { fontSize: 10, color: "#9CA3AF", whiteSpace: "nowrap" };
+  const creato = <span title={fmtDataOra(item.createdAt)}>creato da <b style={{ color: "#6B7280" }}>{nomeUtente(item.createdBy)}</b></span>;
+  const mod = modificato && <span title={fmtDataOra(item.updatedAt)}>mod. da <b style={{ color: "#6B7280" }}>{nomeUtente(item.updatedBy)}</b> il {fmtDataOra(item.updatedAt)}</span>;
+  if (inline) return <span style={style}>{creato}{mod && <> · {mod}</>}</span>;
+  return <div style={style}><div>{creato}</div>{mod && <div>{mod}</div>}</div>;
+}
+
+export { fmtDataOra };

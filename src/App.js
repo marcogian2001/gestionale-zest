@@ -8,6 +8,8 @@ import SezioneBudget       from "./sections/BudgetBooking";
 import SezioneRiepilogo    from "./sections/Riepilogo";
 import SezioneImpostazioni from "./sections/Impostazioni";
 import SezioneUtenti       from "./sections/Utenti";
+import SezioneRegistro     from "./sections/Registro";
+import SezioneCestino      from "./sections/Cestino";
 import LoginPage           from "./components/LoginPage";
 import { Toast, ConfirmHost } from "./components/UI";
 
@@ -17,6 +19,8 @@ const NAV = [
   { id: "budget",       label: "Budget booking" },
   { id: "riepilogo",    label: "Riepilogo per itinerario" },
   { id: "utenti",       label: "Gestione utenti",  bottom: false },
+  { id: "registro",     label: "Registro attività" },
+  { id: "cestino",      label: "🗑 Cestino" },
   { id: "impostazioni", label: "⚙ Impostazioni",   bottom: true  },
 ];
 
@@ -78,6 +82,8 @@ export default function App() {
         {section==="budget"       && <SezioneBudget       db={db} />}
         {section==="riepilogo"    && <SezioneRiepilogo    itinerari={db.itinerari} spese={db.spese} />}
         {section==="impostazioni" && <SezioneImpostazioni db={db} showToast={showToast} />}
+        {section==="registro"     && <SezioneRegistro     db={db} showToast={showToast} />}
+        {section==="cestino"      && <SezioneCestino      db={db} showToast={showToast} />}
         {section==="utenti"       && <SezioneUtenti utenti={utenti} currentUser={user} onCrea={creaUtente} onModifica={modificaUtente} onReimposta={reimpostaPassword} onElimina={eliminaUtente} showToast={showToast} />}
         </>}
       </main>

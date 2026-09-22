@@ -3,7 +3,7 @@ import { newId, fmtDate } from "../utils/helpers";
 import {
   Card, CardTitle, SectionTitle, SectionSubTitle, Field,
   Input, Select, Empty, Th, Td, btnPrimary, btnSecondary, btnDanger, btnSm, tableStyle,
-  conferma,
+  conferma, AutoreCell,
 } from "../components/UI";
 
 export default function SezioneItinerari({ db, showToast }) {
@@ -200,6 +200,7 @@ export default function SezioneItinerari({ db, showToast }) {
               <div>
                 <span style={{ fontWeight: 600, fontSize: 14 }}>{it.ni}</span>
                 <span style={{ color: "#6B7280", fontSize: 12, marginLeft: 10 }}>{it.ns}</span>
+                <div style={{ marginTop: 2 }}><AutoreCell item={it} nomeUtente={db.nomeUtente} inline /></div>
               </div>
               <button onClick={() => deleteIt(it)} style={btnDanger}>Elimina</button>
             </div>

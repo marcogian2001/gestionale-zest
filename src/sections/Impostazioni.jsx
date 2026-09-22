@@ -60,15 +60,15 @@ export default function SezioneImpostazioni({ db, showToast }) {
       <Card>
         <CardTitle>Formato nome file</CardTitle>
         <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 10, lineHeight: 1.6 }}>
-          I file vengono rinominati automaticamente al caricamento:
+          I file vengono rinominati automaticamente al caricamento (data pagamento, itinerario, data inizio turno, fornitore, n. fattura):
         </p>
         <div style={{ background: "#F9FAFB", border: "1px solid #E5E7EB", borderRadius: 8, padding: "10px 14px", fontFamily: "monospace", fontSize: 12, color: "#374151" }}>
-          DD.MM.AAAA_ITINERARIO_FORNITORE_NUMERO_FATTURA.ext
+          DD.MM.AAAA_ITINERARIO_INIZIOTURNO_FORNITORE_NUMERO_FATTURA.ext
         </div>
         <div style={{ fontSize: 12, color: "#9CA3AF", marginTop: 8 }}>
           Esempio:{" "}
           <span style={{ fontFamily: "monospace", color: "#374151" }}>
-            02.12.2025_LAPPONIA_POLAR_NIGHT_Aikamatkat_INV600001420.pdf
+            02.12.2025_LAPPONIA_POLAR_NIGHT_15.12.2025_Aikamatkat_INV600001420.pdf
           </span>
         </div>
       </Card>

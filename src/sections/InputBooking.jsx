@@ -28,8 +28,9 @@ export default function SezioneInputBooking({ db, showToast }) {
   useEffect(() => {
     if (!file) { setPreviewName(""); return; }
     const it = itinerari.find(x => String(x.id) === form.itId);
-    setPreviewName(buildFileName(form.data, it?.ni || "", form.fornitore, form.fattura, file.name));
-  }, [file, form.data, form.itId, form.fornitore, form.fattura, itinerari]);
+    const turno = form.turnoRaw ? JSON.parse(form.turnoRaw) : null;
+    setPreviewName(buildFileName(form.data, it?.ni || "", turno?.in, form.fornitore, form.fattura, file.name));
+  }, [file, form.data, form.itId, form.turnoRaw, form.fornitore, form.fattura, itinerari]);
 
   const reset = () => { setForm(FORM_EMPTY); setFile(null); setUploadStatus(null); setPreviewName(""); };
 
@@ -43,7 +44,7 @@ export default function SezioneInputBooking({ db, showToast }) {
       setUploading(true);
       try {
         await ensureGoogleToken();
-        const fileName = buildFileName(form.data, it.ni, form.fornitore, form.fattura, file.name);
+        const fileName = buildFileName(form.data, it.ni, turno.in, form.fornitore, form.fattura, file.name);
         driveUrl = await uploadToDrive(file, fileName);
         setUploadStatus("ok");
       } catch (e) {

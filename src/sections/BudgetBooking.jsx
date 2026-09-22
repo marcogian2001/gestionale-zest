@@ -5,7 +5,7 @@ import {
   Th, Td, tableStyle, btnDanger,
   conferma,
 } from "../components/UI";
-import { Badge, TurnoBadge } from "../components/UI";
+import { Badge, TurnoBadge, AutoreCell } from "../components/UI";
 
 export default function SezioneBudget({ db }) {
   const { itinerari, spese } = db;
@@ -83,7 +83,7 @@ export default function SezioneBudget({ db }) {
           <table style={tableStyle}>
             <thead>
               <tr>
-                {["Itinerario","Turno","Cat.","Descrizione","Fornitore","Importo","Data","Fattura","Mod.","Da","Doc.",""].map(h => <Th key={h}>{h}</Th>)}
+                {["Itinerario","Turno","Cat.","Descrizione","Fornitore","Importo","Data","Fattura","Mod.","Da","Doc.","Utente",""].map(h => <Th key={h}>{h}</Th>)}
               </tr>
             </thead>
             <tbody>
@@ -104,6 +104,7 @@ export default function SezioneBudget({ db }) {
                       ? <a href={s.driveUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", textDecoration: "none", fontWeight: 500 }}>📄 Apri</a>
                       : <span style={{ fontSize: 10, color: "#D1D5DB" }}>—</span>}
                   </Td>
+                  <Td><AutoreCell item={s} nomeUtente={db.nomeUtente} /></Td>
                   <Td><button onClick={() => deleteSpesa(s)} style={btnDanger}>✕</button></Td>
                 </tr>
               ))}
@@ -112,7 +113,7 @@ export default function SezioneBudget({ db }) {
               <tr style={{ background: "#F9FAFB" }}>
                 <td colSpan={5} style={{ padding: "8px 10px", fontSize: 11, color: "#9CA3AF" }}>Totale — {filtered.length} righe</td>
                 <td style={{ padding: "8px 10px", fontWeight: 700, color: tot < 0 ? "#059669" : "#111827" }}>€ {fmt(tot)}</td>
-                <td colSpan={6} />
+                <td colSpan={7} />
               </tr>
             </tfoot>
           </table>
