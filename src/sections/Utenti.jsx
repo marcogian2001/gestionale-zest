@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { RUOLI, RUOLI_LABEL } from "../utils/auth";
+import { MODULO_LABEL } from "../utils/auth";
 import {
-  Card, CardTitle, SectionTitle, Field, Input, Select, Empty,
+  Card, CardTitle, SectionTitle, Field, Input, Empty,
   Th, Td, tableStyle, btnPrimary, btnSecondary, btnDanger, btnSm,
   conferma,
 } from "../components/UI";
 
-const FORM_EMPTY = { nome: "", email: "", password: "", ruolo: RUOLI.ADMIN };
+const FORM_EMPTY = { nome: "", email: "", password: "", ruoli: [] };
 
-export default function SezioneUtenti({ utenti, onCrea, onModifica, onReimposta, onElimina, showToast, currentUser }) {
+export default function SezioneUtenti({ utenti, ruoli, onCrea, onModifica, onReimposta, onElimina, showToast, currentUser }) {
   const [form,       setForm]       = useState(FORM_EMPTY);
   const [editId,     setEditId]     = useState(null);
   const [resetId,    setResetId]    = useState(null);
@@ -21,8 +21,9 @@ export default function SezioneUtenti({ utenti, onCrea, onModifica, onReimposta,
   const salva = async () => {
     setErrore(""); setLoading(true);
     try {
+      if (!form.ruoli.length) { setErrore("Seleziona almeno un ruolo"); setLoading(false); return; }
       if (editId) {
-        await onModifica(editId, { nome: form.nome, email: form.email, ruolo: form.ruolo });
+        await onModifica(editId, { nome: form.nome, email: form.email, ruoli: form.ruoli });
         showToast("Utente aggiornato");
         setEditId(null);
       } else {
@@ -37,7 +38,7 @@ export default function SezioneUtenti({ utenti, onCrea, onModifica, onReimposta,
 
   const avviaModifica = (u) => {
     setEditId(u.id);
-    setForm({ nome: u.nome, email: u.email, password: "", ruolo: u.ruolo });
+    setForm({ nome: u.nome, email: u.email, password: "", ruoli: u.ruoli.map(r => r.chiave) });
     setErrore("");
   };
 
@@ -67,12 +68,31 @@ export default function SezioneUtenti({ utenti, onCrea, onModifica, onReimposta,
           {!editId && (
             <Field label="Password"><Input type="password" value={form.password} onChange={e => set("password", e.target.value)} placeholder="Minimo 8 caratteri" /></Field>
           )}
-          <Field label="Ruolo">
-            <Select value={form.ruolo} onChange={e => set("ruolo", e.target.value)}>
-              {Object.entries(RUOLI_LABEL).map(([val, label]) => (
-                <option key={val} value={val}>{label}</option>
-              ))}
-            </Select>
+          <Field label="Ruoli" style={{ gridColumn: "1/-1" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {ruoli.map(r => {
+                const scelto = form.ruoli.includes(r.chiave);
+                return (
+                  <label key={r.id} title={r.permessi.map(p => MODULO_LABEL[p] || p).join(", ")}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 7, cursor: "pointer",
+                      border: `1px solid ${scelto ? "#FF6B2B" : "#E5E7EB"}`,
+                      background: scelto ? "#FFF7F3" : "#fff",
+                      color: scelto ? "#9A3412" : "#374151",
+                      borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 500,
+                    }}>
+                    <input
+                      type="checkbox" checked={scelto}
+                      onChange={() => set("ruoli", scelto ? form.ruoli.filter(x => x !== r.chiave) : [...form.ruoli, r.chiave])}
+                    />
+                    {r.nome}
+                  </label>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>
+              Con più ruoli la persona vede la somma dei moduli. I ruoli si creano nella sezione «Ruoli e permessi».
+            </div>
           </Field>
         </div>
         {errore && (
@@ -115,7 +135,7 @@ export default function SezioneUtenti({ utenti, onCrea, onModifica, onReimposta,
         <div style={{ overflowX: "auto" }}>
           <table style={tableStyle}>
             <thead>
-              <tr>{["Nome", "Email", "Ruolo", "Creato il", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
+              <tr>{["Nome", "Email", "Ruoli", "Creato il", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
             </thead>
             <tbody>
               {utenti.map(u => (
@@ -126,14 +146,16 @@ export default function SezioneUtenti({ utenti, onCrea, onModifica, onReimposta,
                   </Td>
                   <Td style={{ color: "#6B7280" }}>{u.email}</Td>
                   <Td>
-                    <span style={{
-                      fontSize: 10, padding: "2px 8px", borderRadius: 20, fontWeight: 600,
-                      background: u.ruolo === "super_admin" ? "#FEF3C7" : "#EEF2FF",
-                      color:      u.ruolo === "super_admin" ? "#92400E"  : "#4338CA",
-                      border:     `1px solid ${u.ruolo === "super_admin" ? "#FDE68A" : "#C7D2FE"}`,
-                    }}>
-                      {RUOLI_LABEL[u.ruolo]}
-                    </span>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {u.ruoli.map(r => (
+                        <span key={r.id} style={{
+                          fontSize: 10, padding: "2px 8px", borderRadius: 20, fontWeight: 600,
+                          background: r.superAdmin ? "#FEF3C7" : "#EEF2FF",
+                          color:      r.superAdmin ? "#92400E" : "#4338CA",
+                          border:     `1px solid ${r.superAdmin ? "#FDE68A" : "#C7D2FE"}`,
+                        }}>{r.nome}</span>
+                      ))}
+                    </div>
                   </Td>
                   <Td style={{ fontSize: 11, color: "#9CA3AF" }}>
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString("it-IT") : "—"}

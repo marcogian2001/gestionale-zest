@@ -1,38 +1,59 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
 
-// ── Ruoli disponibili ─────────────────────────────────────────────────────────
-export const RUOLI = {
-  SUPER_ADMIN: "super_admin",
-  ADMIN:       "admin",
-  CONTABILITA: "contabilita",
-  FINANCE:     "finance",
-};
+// ── Moduli del gestionale, raggruppati per macro-area ─────────────────────────
+// Aggiungere qui una voce la rende disponibile sia nel menu sia nella scelta
+// dei permessi quando si crea un ruolo.
+export const GRUPPI = [
+  {
+    id: "viaggi", label: "Viaggi",
+    moduli: [
+      { id: "itinerari", label: "Itinerari" },
+      { id: "booking",   label: "Input booking" },
+      { id: "budget",    label: "Budget booking" },
+      { id: "riepilogo", label: "Riepilogo per itinerario" },
+    ],
+  },
+  {
+    id: "amministrazione", label: "Amministrazione",
+    moduli: [
+      { id: "contabilita", label: "Contabilità" },
+    ],
+  },
+  {
+    id: "gestione", label: "Gestione",
+    moduli: [
+      { id: "utenti",       label: "Utenti" },
+      { id: "ruoli",        label: "Ruoli e permessi" },
+      { id: "registro",     label: "Registro attività" },
+      { id: "cestino",      label: "Cestino" },
+      { id: "impostazioni", label: "Impostazioni" },
+    ],
+  },
+];
 
-export const RUOLI_LABEL = {
-  super_admin: "Super Admin",
-  admin:       "Admin / Supervisore",
-  contabilita: "Contabilità",
-  finance:     "Finance",
-};
+export const MODULI = GRUPPI.flatMap(g => g.moduli);
+export const MODULO_LABEL = Object.fromEntries(MODULI.map(m => [m.id, m.label]));
 
-// ── Permessi per ruolo ────────────────────────────────────────────────────────
-// Definisce cosa vede ogni ruolo nel menu
-export const PERMESSI = {
-  super_admin: ["itinerari", "booking", "budget", "riepilogo", "contabilita", "utenti", "registro", "cestino", "impostazioni"],
-  admin:       ["itinerari", "booking", "budget", "riepilogo"],
-  // Provvisorio, in attesa della definizione completa dei permessi per ruolo
-  contabilita: ["contabilita", "budget", "riepilogo"],
-  finance:     ["contabilita", "budget", "riepilogo"],
-};
+export function canAccess(user, sezione) {
+  return !!user?.permessi?.includes(sezione);
+}
 
-export function canAccess(ruolo, sezione) {
-  return (PERMESSI[ruolo] || []).includes(sezione);
+function mapRuolo(r) {
+  return { id: r.id, chiave: r.chiave, nome: r.nome, permessi: r.permessi || [], superAdmin: r.super_admin, sistema: r.sistema };
 }
 
 function mapProfilo(p) {
-  return { id: p.id, nome: p.nome, email: p.email, ruolo: p.ruolo, createdAt: p.created_at };
+  const ruoli = (p.profili_ruoli || []).map(x => mapRuolo(x.ruoli)).filter(Boolean);
+  return {
+    id: p.id, nome: p.nome, email: p.email, createdAt: p.created_at,
+    ruoli,
+    permessi: [...new Set(ruoli.flatMap(r => r.permessi))],
+    superAdmin: ruoli.some(r => r.superAdmin),
+  };
 }
+
+const SELECT_PROFILO = "*, profili_ruoli(ruoli(*))";
 
 // Chiama la Edge Function "admin-utenti" (solo Super Admin)
 async function adminUtenti(body) {
@@ -49,19 +70,21 @@ async function adminUtenti(body) {
 export function useAuthState() {
   const [user,    setUser]    = useState(null);
   const [utenti,  setUtenti]  = useState([]);
+  const [ruoli,   setRuoli]   = useState([]);
   const [ready,   setReady]   = useState(false);   // sessione iniziale verificata
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
 
   const caricaProfilo = useCallback(async (session) => {
     if (!session) { setUser(null); setReady(true); return; }
-    const { data } = await supabase.from("profili").select("*").eq("id", session.user.id).single();
-    if (!data) {
-      await supabase.auth.signOut();
-      setUser(null);
-      setError("Account senza profilo — contatta il Super Admin");
-    } else {
+    const { data, error } = await supabase.from("profili").select(SELECT_PROFILO).eq("id", session.user.id).single();
+    if (data) {
       setUser(mapProfilo(data));
+      setError("");
+    } else {
+      // Non disconnettiamo la sessione: può essere un errore temporaneo di rete
+      setUser(null);
+      setError(error?.message ? "Profilo non caricato: " + error.message : "Account senza profilo — contatta il Super Admin");
     }
     setReady(true);
   }, []);
@@ -76,11 +99,15 @@ export function useAuthState() {
   }, [caricaProfilo]);
 
   const caricaUtenti = useCallback(async () => {
-    const { data } = await supabase.from("profili").select("*").order("created_at");
-    setUtenti((data || []).map(mapProfilo));
+    const [{ data: pr }, { data: ru }] = await Promise.all([
+      supabase.from("profili").select(SELECT_PROFILO).order("created_at"),
+      supabase.from("ruoli").select("*").order("nome"),
+    ]);
+    setUtenti((pr || []).map(mapProfilo));
+    setRuoli((ru || []).map(mapRuolo));
   }, []);
 
-  useEffect(() => { if (user?.ruolo === RUOLI.SUPER_ADMIN) caricaUtenti(); }, [user, caricaUtenti]);
+  useEffect(() => { if (user?.superAdmin) caricaUtenti(); }, [user, caricaUtenti]);
 
   const login = async (email, password) => {
     setLoading(true); setError("");
@@ -95,15 +122,21 @@ export function useAuthState() {
 
   const logout = () => supabase.auth.signOut();
 
-  const creaUtente = async ({ nome, email, password, ruolo }) => {
-    await adminUtenti({ action: "crea", nome, email, password, ruolo });
+  const ricarica = async () => {
     await caricaUtenti();
+    const { data } = await supabase.auth.getSession();
+    if (data.session) await caricaProfilo(data.session);
   };
 
-  const modificaUtente = async (id, { nome, email, ruolo }) => {
-    await adminUtenti({ action: "modifica", id, nome, email, ruolo });
-    await caricaUtenti();
-    if (id === user?.id) setUser(u => ({ ...u, nome, email, ruolo }));
+  // ── Utenti ─────────────────────────────────────────────────────────────────
+  const creaUtente = async ({ nome, email, password, ruoli }) => {
+    await adminUtenti({ action: "crea", nome, email, password, ruoli });
+    await ricarica();
+  };
+
+  const modificaUtente = async (id, { nome, email, ruoli }) => {
+    await adminUtenti({ action: "modifica", id, nome, email, ruoli });
+    await ricarica();
   };
 
   const reimpostaPassword = async (id, password) => {
@@ -112,8 +145,29 @@ export function useAuthState() {
 
   const eliminaUtente = async (id) => {
     await adminUtenti({ action: "elimina", id });
-    await caricaUtenti();
+    await ricarica();
   };
 
-  return { user, utenti, ready, loading, error, login, logout, creaUtente, modificaUtente, reimpostaPassword, eliminaUtente };
+  // ── Ruoli ──────────────────────────────────────────────────────────────────
+  const creaRuolo = async ({ nome, permessi }) => {
+    await adminUtenti({ action: "ruolo_crea", nome, permessi });
+    await ricarica();
+  };
+
+  const modificaRuolo = async (id, { nome, permessi }) => {
+    await adminUtenti({ action: "ruolo_modifica", id, nome, permessi });
+    await ricarica();
+  };
+
+  const eliminaRuolo = async (id) => {
+    await adminUtenti({ action: "ruolo_elimina", id });
+    await ricarica();
+  };
+
+  return {
+    user, utenti, ruoli, ready, loading, error,
+    login, logout,
+    creaUtente, modificaUtente, reimpostaPassword, eliminaUtente,
+    creaRuolo, modificaRuolo, eliminaRuolo,
+  };
 }

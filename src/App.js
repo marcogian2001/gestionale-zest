@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useZestData } from "./utils/db";
-import { useAuthState, canAccess, RUOLI_LABEL } from "./utils/auth";
+import { useAuthState, canAccess, GRUPPI } from "./utils/auth";
 
 import SezioneItinerari    from "./sections/Itinerari";
 import SezioneInputBooking from "./sections/InputBooking";
@@ -8,27 +8,19 @@ import SezioneBudget       from "./sections/BudgetBooking";
 import SezioneRiepilogo    from "./sections/Riepilogo";
 import SezioneImpostazioni from "./sections/Impostazioni";
 import SezioneUtenti       from "./sections/Utenti";
+import SezioneRuoli        from "./sections/Ruoli";
 import SezioneRegistro     from "./sections/Registro";
 import SezioneCestino      from "./sections/Cestino";
 import SezioneContabilita  from "./sections/Contabilita";
 import LoginPage           from "./components/LoginPage";
 import { Toast, ConfirmHost } from "./components/UI";
 
-const NAV = [
-  { id: "itinerari",    label: "Itinerari" },
-  { id: "booking",      label: "Input booking" },
-  { id: "budget",       label: "Budget booking" },
-  { id: "riepilogo",    label: "Riepilogo per itinerario" },
-  { id: "contabilita",  label: "Contabilità" },
-  { id: "utenti",       label: "Gestione utenti",  bottom: false },
-  { id: "registro",     label: "Registro attività" },
-  { id: "cestino",      label: "🗑 Cestino" },
-  { id: "impostazioni", label: "⚙ Impostazioni",   bottom: true  },
-];
+const FONT = "'DM Sans','Segoe UI',system-ui,sans-serif";
 
 export default function App() {
-  const { user, utenti, ready, loading: authLoading, error: authError, login, logout,
-          creaUtente, modificaUtente, reimpostaPassword, eliminaUtente } = useAuthState();
+  const { user, utenti, ruoli, ready, loading: authLoading, error: authError, login, logout,
+          creaUtente, modificaUtente, reimpostaPassword, eliminaUtente,
+          creaRuolo, modificaRuolo, eliminaRuolo } = useAuthState();
 
   const [section, setSection] = useState("itinerari");
   const [toast,   setToast]   = useState("");
@@ -40,57 +32,83 @@ export default function App() {
   const db = useZestData(!!user, showToast);
   const clientId = db.impostazioni.google_client_id || "";
 
-  useEffect(() => { window._googleClientId = clientId; }, [clientId]);
-  // Prima sezione accessibile per il ruolo dell'utente
-  const home = user ? (NAV.find(x => canAccess(user.ruolo, x.id))?.id || "itinerari") : "itinerari";
-  useEffect(() => { if (user) setSection(home); }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (user && !canAccess(user.ruolo, section)) setSection(home); }, [user, section, home]);
+  // Prima sezione accessibile per i ruoli dell'utente
+  const moduliVisibili = GRUPPI.flatMap(g => g.moduli).filter(m => canAccess(user, m.id));
+  const home = moduliVisibili[0]?.id || "itinerari";
 
-  if (!ready) return <div style={{ padding: "3rem", textAlign: "center", color: "#9CA3AF", fontFamily: "'DM Sans','Segoe UI',system-ui,sans-serif" }}>Caricamento...</div>;
+  useEffect(() => { window._googleClientId = clientId; }, [clientId]);
+  useEffect(() => { if (user) setSection(home); }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (user && !canAccess(user, section)) setSection(home); }, [user, section, home]);
+
+  if (!ready) return <Schermo>Caricamento...</Schermo>;
   if (!user)  return <LoginPage onLogin={login} loading={authLoading} error={authError} />;
 
-  const navTop    = NAV.filter(x => !x.bottom  && canAccess(user.ruolo, x.id));
-  const navBottom = NAV.filter(x =>  x.bottom  && canAccess(user.ruolo, x.id));
+  const alertAperti = db.spese.filter(s => s.alert && !s.alertRisoltoAt).length;
 
   return (
-    <div style={{ display:"flex", minHeight:"100vh", fontFamily:"'DM Sans','Segoe UI',system-ui,sans-serif", background:"#F9FAFB", color:"#111827" }}>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: FONT, background: "#F6F7F9", color: "#111827" }}>
 
-      <nav style={{ width:210, minWidth:210, background:"#fff", borderRight:"1px solid #E5E7EB", padding:"1.5rem 0", display:"flex", flexDirection:"column", position:"fixed", top:0, bottom:0, left:0, zIndex:10 }}>
-        <div style={{ padding:"0 1.25rem 1.25rem", borderBottom:"1px solid #F3F4F6", marginBottom:"0.75rem", display:"flex", alignItems:"center", gap:10 }}>
-          <img src="/logo.png" alt="Zest" style={{ width:36, height:36, borderRadius:"50%", objectFit:"cover" }} />
-          <div style={{ fontSize:15, fontWeight:800, color:"#111827", letterSpacing:"-0.01em" }}>ZEST</div>
+      <nav style={{
+        width: 232, minWidth: 232, background: "#fff", borderRight: "1px solid #ECEEF1",
+        padding: "1.4rem 0 1rem", display: "flex", flexDirection: "column",
+        position: "fixed", top: 0, bottom: 0, left: 0, zIndex: 10, overflowY: "auto",
+      }}>
+        <div style={{ padding: "0 1.1rem 1.1rem", display: "flex", alignItems: "center", gap: 11 }}>
+          <img src="/logo.png" alt="Zest" style={{ width: 38, height: 38, borderRadius: "50%", objectFit: "cover" }} />
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.01em" }}>ZEST</div>
+            <div style={{ fontSize: 10, color: "#9CA3AF" }}>Gestionale</div>
+          </div>
         </div>
 
-        <div style={{ display:"flex", flexDirection:"column", flex:1 }}>
-          {navTop.map(item => <NavButton key={item.id} item={item} active={section===item.id} onClick={()=>setSection(item.id)}
-            badge={item.id === "contabilita" ? db.spese.filter(s => s.alert && !s.alertRisoltoAt).length : 0} />)}
+        <div style={{ flex: 1, padding: "0 0.6rem" }}>
+          {GRUPPI.map(gruppo => {
+            const voci = gruppo.moduli.filter(m => canAccess(user, m.id));
+            if (!voci.length) return null;
+            return (
+              <div key={gruppo.id} style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.09em", padding: "0 0.65rem 6px" }}>
+                  {gruppo.label}
+                </div>
+                {voci.map(item => (
+                  <NavButton
+                    key={item.id} item={item}
+                    active={section === item.id}
+                    onClick={() => setSection(item.id)}
+                    badge={item.id === "contabilita" ? alertAperti : 0}
+                  />
+                ))}
+              </div>
+            );
+          })}
+        </div>
 
-          <div style={{ marginTop:"auto" }}>
-            {navBottom.map(item => <NavButton key={item.id} item={item} active={section===item.id} onClick={()=>setSection(item.id)} />)}
-            <div style={{ margin:"8px 10px 0", padding:"10px 12px", background:"#F9FAFB", border:"1px solid #F3F4F6", borderRadius:10 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:"#111827", marginBottom:2 }}>{user.nome}</div>
-              <div style={{ fontSize:10, color:"#9CA3AF", marginBottom:8 }}>{RUOLI_LABEL[user.ruolo]}</div>
-              <button onClick={logout} style={{ fontSize:11, fontFamily:"inherit", padding:"4px 10px", borderRadius:6, cursor:"pointer", fontWeight:500, background:"transparent", color:"#EF4444", border:"1px solid #FECACA", width:"100%" }}>
-                Esci
-              </button>
-            </div>
+        <div style={{ margin: "0 0.85rem", padding: "12px 13px", background: "#FAFBFC", border: "1px solid #EEF0F3", borderRadius: 12 }}>
+          <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 3 }}>{user.nome}</div>
+          <div style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 9, lineHeight: 1.4 }}>
+            {user.ruoli.map(r => r.nome).join(" · ") || "Nessun ruolo"}
           </div>
+          <button onClick={logout} style={{
+            fontSize: 11, fontFamily: "inherit", padding: "6px 10px", borderRadius: 8, cursor: "pointer",
+            fontWeight: 600, background: "#fff", color: "#EF4444", border: "1px solid #FECACA", width: "100%",
+          }}>
+            Esci
+          </button>
         </div>
       </nav>
 
-      <main style={{ marginLeft:210, flex:1, minWidth:0, padding:"2rem 2.5rem", maxWidth:"calc(100vw - 210px)", boxSizing:"border-box" }}>
-        {db.loading ? (
-          <div style={{ padding: "3rem", textAlign: "center", color: "#9CA3AF" }}>Caricamento dati...</div>
-        ) : <>
-        {section==="itinerari"    && <SezioneItinerari    db={db} showToast={showToast} />}
-        {section==="booking"      && <SezioneInputBooking db={db} user={user} showToast={showToast} />}
-        {section==="budget"       && <SezioneBudget       db={db} user={user} showToast={showToast} />}
-        {section==="riepilogo"    && <SezioneRiepilogo    itinerari={db.itinerari} spese={db.spese} />}
-        {section==="impostazioni" && <SezioneImpostazioni db={db} showToast={showToast} />}
-        {section==="registro"     && <SezioneRegistro     db={db} showToast={showToast} />}
-        {section==="cestino"      && <SezioneCestino      db={db} showToast={showToast} />}
-        {section==="contabilita"  && <SezioneContabilita  db={db} showToast={showToast} />}
-        {section==="utenti"       && <SezioneUtenti utenti={utenti} currentUser={user} onCrea={creaUtente} onModifica={modificaUtente} onReimposta={reimpostaPassword} onElimina={eliminaUtente} showToast={showToast} />}
+      <main style={{ marginLeft: 232, flex: 1, minWidth: 0, padding: "2.1rem 2.4rem 3rem", maxWidth: "calc(100vw - 232px)", boxSizing: "border-box" }}>
+        {db.loading ? <Schermo>Caricamento dati...</Schermo> : <>
+          {section === "itinerari"    && <SezioneItinerari    db={db} showToast={showToast} />}
+          {section === "booking"      && <SezioneInputBooking db={db} user={user} showToast={showToast} />}
+          {section === "budget"       && <SezioneBudget       db={db} user={user} showToast={showToast} />}
+          {section === "riepilogo"    && <SezioneRiepilogo    itinerari={db.itinerari} spese={db.spese} />}
+          {section === "contabilita"  && <SezioneContabilita  db={db} showToast={showToast} />}
+          {section === "impostazioni" && <SezioneImpostazioni db={db} showToast={showToast} />}
+          {section === "registro"     && <SezioneRegistro     db={db} showToast={showToast} />}
+          {section === "cestino"      && <SezioneCestino      db={db} showToast={showToast} />}
+          {section === "ruoli"        && <SezioneRuoli ruoli={ruoli} onCrea={creaRuolo} onModifica={modificaRuolo} onElimina={eliminaRuolo} showToast={showToast} />}
+          {section === "utenti"       && <SezioneUtenti utenti={utenti} ruoli={ruoli} currentUser={user} onCrea={creaUtente} onModifica={modificaUtente} onReimposta={reimpostaPassword} onElimina={eliminaUtente} showToast={showToast} />}
         </>}
       </main>
 
@@ -100,11 +118,34 @@ export default function App() {
   );
 }
 
+function Schermo({ children }) {
+  return (
+    <div style={{ padding: "3.5rem", textAlign: "center", color: "#9CA3AF", fontFamily: FONT, fontSize: 14 }}>
+      {children}
+    </div>
+  );
+}
+
 function NavButton({ item, active, onClick, badge }) {
   return (
-    <button onClick={onClick} style={{ display:"block", width:"100%", textAlign:"left", padding:"9px 1.25rem", cursor:"pointer", fontSize:13, fontWeight:active?600:400, color:active?"#111827":"#6B7280", background:active?"#F3F4F6":"transparent", border:"none", borderLeft:`3px solid ${active?"#FF6B2B":"transparent"}`, fontFamily:"inherit" }}>
-      {item.label}
-      {badge > 0 && <span style={{ marginLeft: 6, background: "#EF4444", color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "1px 6px" }}>{badge}</span>}
+    <button
+      onClick={onClick}
+      className="nav-item"
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6,
+        width: "100%", textAlign: "left", padding: "8px 0.65rem", marginBottom: 1,
+        cursor: "pointer", fontSize: 13, fontWeight: active ? 600 : 400,
+        color: active ? "#9A3412" : "#4B5563",
+        background: active ? "#FFF3ED" : "transparent",
+        border: "none", borderRadius: 9, fontFamily: "inherit",
+      }}
+    >
+      <span>{item.label}</span>
+      {badge > 0 && (
+        <span style={{ background: "#EF4444", color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "1px 6px" }}>
+          {badge}
+        </span>
+      )}
     </button>
   );
 }

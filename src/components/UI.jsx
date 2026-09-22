@@ -2,22 +2,24 @@ import { useState, useEffect } from "react";
 import { CAT_COLORS } from "../utils/helpers";
 
 // ── Stili base condivisi ──────────────────────────────────────────────────────
+export const ZEST = "#FF6B2B";
+
 export const inputStyle = {
   fontSize: 13, fontFamily: "inherit",
-  border: "1px solid #E5E7EB", borderRadius: 8,
-  padding: "7px 10px", background: "#fff", color: "#111827", width: "100%",
+  border: "1px solid #E1E4E8", borderRadius: 10,
+  padding: "9px 12px", background: "#fff", color: "#111827", width: "100%",
   outline: "none", boxSizing: "border-box",
 };
 
 export const btnBase = {
-  fontSize: 12, fontFamily: "inherit", borderRadius: 8,
-  cursor: "pointer", fontWeight: 600, padding: "7px 16px", border: "none",
+  fontSize: 12.5, fontFamily: "inherit", borderRadius: 10,
+  cursor: "pointer", fontWeight: 600, padding: "9px 18px", border: "none",
 };
-export const btnPrimary    = { ...btnBase, background: "#111827", color: "#fff" };
-export const btnSecondary  = { ...btnBase, background: "transparent", color: "#374151", border: "1px solid #D1D5DB" };
-export const btnDanger     = { ...btnBase, background: "transparent", color: "#EF4444", border: "1px solid #FECACA", fontSize: 11, padding: "3px 8px" };
-export const btnSm         = { ...btnBase, background: "transparent", color: "#374151", border: "1px solid #E5E7EB", fontSize: 11, padding: "3px 10px" };
-export const tableStyle    = { width: "100%", borderCollapse: "collapse", fontSize: 12 };
+export const btnPrimary    = { ...btnBase, background: ZEST, color: "#fff", boxShadow: "0 1px 2px rgba(226,85,26,0.25)" };
+export const btnSecondary  = { ...btnBase, background: "#fff", color: "#374151", border: "1px solid #DFE3E8" };
+export const btnDanger     = { ...btnBase, background: "#fff", color: "#EF4444", border: "1px solid #FBD5D5", fontSize: 11, padding: "5px 10px", borderRadius: 8 };
+export const btnSm         = { ...btnBase, background: "#fff", color: "#374151", border: "1px solid #E5E7EB", fontSize: 11, padding: "5px 11px", borderRadius: 8 };
+export const tableStyle    = { width: "100%", borderCollapse: "collapse", fontSize: 12.5 };
 
 // ── Input & Select ────────────────────────────────────────────────────────────
 export function Input({ style, ...props }) {
@@ -42,18 +44,18 @@ export function Field({ label, children, style }) {
 
 export function Card({ children, style }) {
   return (
-    <div style={{ background: "#fff", border: "1px solid #E5E7EB", borderRadius: 12, padding: "1.25rem", marginBottom: "1rem", ...style }}>
+    <div style={{ background: "#fff", border: "1px solid #ECEEF1", borderRadius: 14, padding: "1.35rem 1.4rem", marginBottom: "1.1rem", boxShadow: "0 1px 2px rgba(16,24,40,0.04)", ...style }}>
       {children}
     </div>
   );
 }
 
 export function CardTitle({ children }) {
-  return <div style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 12 }}>{children}</div>;
+  return <div style={{ fontSize: 13.5, fontWeight: 700, color: "#111827", marginBottom: 14 }}>{children}</div>;
 }
 
 export function SectionTitle({ children }) {
-  return <h2 style={{ fontSize: 16, fontWeight: 700, color: "#111827", marginBottom: 16, marginTop: 0 }}>{children}</h2>;
+  return <h2 style={{ fontSize: 20, fontWeight: 800, color: "#111827", marginBottom: 18, marginTop: 0, letterSpacing: "-0.02em" }}>{children}</h2>;
 }
 
 export function SectionSubTitle({ children }) {
@@ -66,7 +68,7 @@ export function SectionSubTitle({ children }) {
 
 export function Empty({ children }) {
   return (
-    <div style={{ color: "#9CA3AF", fontSize: 13, textAlign: "center", padding: "2rem", background: "#FAFAFA", border: "1px dashed #E5E7EB", borderRadius: 10 }}>
+    <div style={{ color: "#9CA3AF", fontSize: 13, textAlign: "center", padding: "2.2rem", background: "#FBFBFC", border: "1px dashed #E1E4E8", borderRadius: 12 }}>
       {children}
     </div>
   );
@@ -75,7 +77,7 @@ export function Empty({ children }) {
 // ── Tabella ───────────────────────────────────────────────────────────────────
 export function Th({ children }) {
   return (
-    <th style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 600, textAlign: "left", padding: "6px 8px", borderBottom: "1px solid #F3F4F6", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>
+    <th style={{ fontSize: 10, color: "#8A919B", fontWeight: 700, textAlign: "left", padding: "9px 10px", borderBottom: "1px solid #ECEEF1", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap", background: "#FCFCFD" }}>
       {children}
     </th>
   );
@@ -83,7 +85,7 @@ export function Th({ children }) {
 
 export function Td({ children, style }) {
   return (
-    <td style={{ padding: "7px 8px", borderBottom: "1px solid #F9FAFB", verticalAlign: "middle", ...style }}>
+    <td style={{ padding: "10px 10px", borderBottom: "1px solid #F4F5F7", verticalAlign: "middle", ...style }}>
       {children}
     </td>
   );
@@ -110,9 +112,9 @@ export function TurnoBadge({ turno }) {
 
 export function MetricCard({ label, value, color }) {
   return (
-    <div style={{ background: "#FAFAFA", border: "1px solid #E5E7EB", borderRadius: 10, padding: "12px 18px", minWidth: 110, flex: 1 }}>
-      <div style={{ fontSize: 10, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 20, fontWeight: 700, color: color || "#111827" }}>{value}</div>
+    <div style={{ background: "#fff", border: "1px solid #ECEEF1", borderRadius: 14, padding: "14px 18px", minWidth: 120, flex: 1, boxShadow: "0 1px 2px rgba(16,24,40,0.04)" }}>
+      <div style={{ fontSize: 10, color: "#8A919B", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6, fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 22, fontWeight: 800, color: color || "#111827", letterSpacing: "-0.02em" }}>{value}</div>
     </div>
   );
 }
@@ -120,7 +122,7 @@ export function MetricCard({ label, value, color }) {
 export function Toast({ msg }) {
   if (!msg) return null;
   return (
-    <div style={{ position: "fixed", bottom: 28, right: 28, background: "#022C22", color: "#D1FAE5", borderRadius: 10, padding: "12px 20px", fontSize: 13, fontWeight: 500, zIndex: 1000, boxShadow: "0 4px 24px rgba(0,0,0,0.18)" }}>
+    <div style={{ position: "fixed", bottom: 28, right: 28, background: "#111827", color: "#fff", borderRadius: 12, padding: "13px 22px", fontSize: 13, fontWeight: 500, zIndex: 1000, boxShadow: "0 10px 30px rgba(16,24,40,0.22)" }}>
       {msg}
     </div>
   );
@@ -146,8 +148,8 @@ export function ConfirmHost() {
   const chiudi = (ok) => { dialog.resolve(ok); setDialog(null); };
   return (
     <div onClick={() => chiudi(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", width: 380, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-        <div style={{ fontSize: 14, color: "#111827", lineHeight: 1.5, marginBottom: 20 }}>{dialog.msg}</div>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 18, padding: "1.6rem", width: 400, boxShadow: "0 24px 60px rgba(16,24,40,0.24)" }}>
+        <div style={{ fontSize: 14, color: "#111827", lineHeight: 1.55, marginBottom: 22 }}>{dialog.msg}</div>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button onClick={() => chiudi(false)} style={btnSecondary} autoFocus>Annulla</button>
           <button onClick={() => chiudi(true)} style={{ ...btnBase, background: dialog.label === "Elimina" ? "#EF4444" : "#111827", color: "#fff" }}>{dialog.label}</button>
