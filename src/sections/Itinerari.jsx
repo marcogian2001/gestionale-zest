@@ -3,9 +3,11 @@ import { newId, fmtDate } from "../utils/helpers";
 import {
   Card, CardTitle, SectionTitle, SectionSubTitle, Field,
   Input, Select, Empty, Th, Td, btnPrimary, btnSecondary, btnDanger, btnSm, tableStyle,
+  conferma,
 } from "../components/UI";
 
-export default function SezioneItinerari({ itinerari, setItinerari, showToast }) {
+export default function SezioneItinerari({ db, showToast }) {
+  const { itinerari } = db;
   const [ni, setNi] = useState("");
   const [ns, setNs] = useState("");
   const [turniNew, setTurniNew] = useState([{ id: newId(), in: "", out: "" }]);
@@ -19,26 +21,25 @@ export default function SezioneItinerari({ itinerari, setItinerari, showToast })
   const updateTurno = (id, field, val) =>
     setTurniNew(t => t.map(x => x.id === id ? { ...x, [field]: val } : x));
 
-  const saveIt = () => {
+  const [saving, setSaving] = useState(false);
+
+  const saveIt = async () => {
     if (!ni.trim()) return;
-    const turni = turniNew
-      .filter(t => t.in && t.out)
-      .map((t, i) => ({ n: i + 1, in: t.in, out: t.out, cancelled: false }));
-    setItinerari(prev => [...prev, { id: newId(), ni: ni.trim(), ns: ns.trim(), turni }]);
+    setSaving(true);
+    const ok = await db.creaItinerario(ni.trim(), ns.trim(), turniNew.filter(t => t.in && t.out));
+    setSaving(false);
+    if (!ok) return;
     setNi(""); setNs(""); setTurniNew([{ id: newId(), in: "", out: "" }]);
     showToast("Itinerario salvato");
   };
 
   // ── Gestione turni itinerario esistente ───────────────────────────────────
-  const toggleCancelled = (itId, idx) => {
-    setItinerari(prev => prev.map(it => {
-      if (it.id !== itId) return it;
-      const turni = it.turni.map((t, i) => i === idx ? { ...t, cancelled: !t.cancelled } : t);
-      return { ...it, turni };
-    }));
-  };
+  const toggleCancelled = (turno) => db.setTurnoAnnullato(turno.id, !turno.cancelled);
 
-  const deleteIt = (itId) => setItinerari(prev => prev.filter(x => x.id !== itId));
+  const deleteIt = async (it) => {
+    if (!(await conferma(`Eliminare l'itinerario "${it.ni}" e tutti i suoi turni?`))) return;
+    if (await db.eliminaItinerario(it.id)) showToast("Itinerario eliminato");
+  };
 
   const managed = itinerari.find(x => String(x.id) === selManage);
 
@@ -51,18 +52,10 @@ export default function SezioneItinerari({ itinerari, setItinerari, showToast })
   const updateTurnoAdd = (id, field, val) =>
     setTurniAdd(t => t.map(x => x.id === id ? { ...x, [field]: val } : x));
 
-  const saveTurniAdd = () => {
+  const saveTurniAdd = async () => {
     const validi = turniAdd.filter(t => t.in && t.out);
     if (!validi.length) return;
-    setItinerari(prev => prev.map(it => {
-      if (String(it.id) !== selManage) return it;
-      const esistenti = it.turni.length;
-      const nuovi = validi.map((t, i) => ({
-        n: esistenti + i + 1,
-        in: t.in, out: t.out, cancelled: false,
-      }));
-      return { ...it, turni: [...it.turni, ...nuovi] };
-    }));
+    if (!(await db.aggiungiTurni(managed.id, validi))) return;
     setTurniAdd([]);
     setShowAddTurni(false);
     showToast("Turni aggiunti");
@@ -105,7 +98,7 @@ export default function SezioneItinerari({ itinerari, setItinerari, showToast })
           <button onClick={addTurno} style={{ ...btnSecondary, fontSize: 11, marginTop: 4 }}>+ Aggiungi turno</button>
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button onClick={saveIt} style={btnPrimary}>Salva itinerario</button>
+          <button onClick={saveIt} style={btnPrimary} disabled={saving}>{saving ? "Salvataggio..." : "Salva itinerario"}</button>
         </div>
       </Card>
 
@@ -134,8 +127,8 @@ export default function SezioneItinerari({ itinerari, setItinerari, showToast })
                   <tr>{["Turno", "Data in", "Data out", "Stato", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
                 </thead>
                 <tbody>
-                  {managed.turni.map((t, i) => (
-                    <tr key={i}>
+                  {managed.turni.map(t => (
+                    <tr key={t.id}>
                       <Td><span style={{ fontWeight: 600 }}>T{t.n}</span></Td>
                       <Td>
                         <span style={{ textDecoration: t.cancelled ? "line-through" : "none", color: t.cancelled ? "#9CA3AF" : "inherit" }}>
@@ -153,7 +146,7 @@ export default function SezioneItinerari({ itinerari, setItinerari, showToast })
                           : <span style={{ background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0", borderRadius: 20, fontSize: 10, padding: "2px 8px" }}>Attivo</span>}
                       </Td>
                       <Td>
-                        <button onClick={() => toggleCancelled(managed.id, i)} style={btnSm}>
+                        <button onClick={() => toggleCancelled(t)} style={btnSm}>
                           {t.cancelled ? "Riattiva" : "Annulla"}
                         </button>
                       </Td>
@@ -208,7 +201,7 @@ export default function SezioneItinerari({ itinerari, setItinerari, showToast })
                 <span style={{ fontWeight: 600, fontSize: 14 }}>{it.ni}</span>
                 <span style={{ color: "#6B7280", fontSize: 12, marginLeft: 10 }}>{it.ns}</span>
               </div>
-              <button onClick={() => deleteIt(it.id)} style={btnDanger}>Elimina</button>
+              <button onClick={() => deleteIt(it)} style={btnDanger}>Elimina</button>
             </div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
               {it.turni.map((t, i) => (

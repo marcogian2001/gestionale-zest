@@ -63,9 +63,6 @@ export default function LoginPage({ onLogin, loading, error }) {
           </form>
         </div>
 
-        <div style={{ textAlign: "center", marginTop: 20, fontSize: 11, color: "#D1D5DB" }}>
-          Primo accesso: admin@zestfamily.it / zest2026!
-        </div>
       </div>
     </div>
   );

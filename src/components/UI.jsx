@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { CAT_COLORS } from "../utils/helpers";
 
 // ── Stili base condivisi ──────────────────────────────────────────────────────
@@ -121,6 +122,36 @@ export function Toast({ msg }) {
   return (
     <div style={{ position: "fixed", bottom: 28, right: 28, background: "#022C22", color: "#D1FAE5", borderRadius: 10, padding: "12px 20px", fontSize: 13, fontWeight: 500, zIndex: 1000, boxShadow: "0 4px 24px rgba(0,0,0,0.18)" }}>
       {msg}
+    </div>
+  );
+}
+
+// ── Finestra di conferma ──────────────────────────────────────────────────────
+// Uso: if (!(await conferma("Eliminare?"))) return;
+// Richiede <ConfirmHost /> montato una volta in App.
+let apriConferma = null;
+
+export function conferma(msg) {
+  return new Promise(resolve => {
+    if (apriConferma) apriConferma({ msg, resolve });
+    else resolve(window.confirm(msg));
+  });
+}
+
+export function ConfirmHost() {
+  const [dialog, setDialog] = useState(null);
+  useEffect(() => { apriConferma = setDialog; return () => { apriConferma = null; }; }, []);
+  if (!dialog) return null;
+  const chiudi = (ok) => { dialog.resolve(ok); setDialog(null); };
+  return (
+    <div onClick={() => chiudi(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", width: 380, boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+        <div style={{ fontSize: 14, color: "#111827", lineHeight: 1.5, marginBottom: 20 }}>{dialog.msg}</div>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={() => chiudi(false)} style={btnSecondary} autoFocus>Annulla</button>
+          <button onClick={() => chiudi(true)} style={{ ...btnBase, background: "#EF4444", color: "#fff" }}>Elimina</button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { RUOLI, RUOLI_LABEL } from "../utils/auth";
 import {
   Card, CardTitle, SectionTitle, Field, Input, Select, Empty,
   Th, Td, tableStyle, btnPrimary, btnSecondary, btnDanger, btnSm,
+  conferma,
 } from "../components/UI";
 
 const FORM_EMPTY = { nome: "", email: "", password: "", ruolo: RUOLI.ADMIN };
@@ -49,7 +50,7 @@ export default function SezioneUtenti({ utenti, onCrea, onModifica, onReimposta,
       await onReimposta(resetId, nuovaPass);
       showToast("Password reimpostata");
       setResetId(null); setNuovaPass("");
-    } catch { setErrore("Errore reimpostazione"); }
+    } catch (e) { setErrore(e.message); setResetId(null); }
     setLoading(false);
   };
 
@@ -142,7 +143,11 @@ export default function SezioneUtenti({ utenti, onCrea, onModifica, onReimposta,
                       <button onClick={() => avviaModifica(u)} style={btnSm}>Modifica</button>
                       <button onClick={() => setResetId(u.id)} style={btnSm}>Password</button>
                       {u.id !== currentUser?.id && (
-                        <button onClick={() => onElimina(u.id)} style={btnDanger}>Elimina</button>
+                        <button onClick={async () => {
+                          if (!(await conferma(`Eliminare l'utente ${u.nome}?`))) return;
+                          try { await onElimina(u.id); showToast("Utente eliminato"); }
+                          catch (e) { setErrore(e.message); }
+                        }} style={btnDanger}>Elimina</button>
                       )}
                     </div>
                   </Td>

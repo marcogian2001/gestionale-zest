@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { newId, fmtDate, CATEGORIE, MODALITA } from "../utils/helpers";
+import { fmtDate, CATEGORIE, MODALITA } from "../utils/helpers";
 import { buildFileName, ensureGoogleToken, uploadToDrive } from "../utils/driveUpload";
 import {
   Card, SectionTitle, Field, Input, Select, Empty,
@@ -11,7 +11,8 @@ const FORM_EMPTY = {
   importo: "", data: "", fattura: "", modalita: "", da: "", note: "",
 };
 
-export default function SezioneInputBooking({ itinerari, setSpese, showToast }) {
+export default function SezioneInputBooking({ db, showToast }) {
+  const { itinerari } = db;
   const [form, setForm] = useState(FORM_EMPTY);
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -54,15 +55,15 @@ export default function SezioneInputBooking({ itinerari, setSpese, showToast }) 
       }
     }
 
-    setSpese(prev => [...prev, {
-      id: newId(), itId: it.id, itNome: it.ni,
-      turnoN: turno.n, turnoIn: turno.in, turnoOut: turno.out,
+    const ok = await db.creaSpesa({
+      itId: it.id, turnoId: turno.id,
       cat: form.cat, fornitore: form.fornitore, desc: form.desc,
       importo: parseFloat(form.importo) || 0,
       data: form.data, fattura: form.fattura,
       modalita: form.modalita, da: form.da, note: form.note,
       driveUrl,
-    }]);
+    });
+    if (!ok) return;
 
     showToast(driveUrl ? "Spesa registrata + file caricato su Drive" : "Spesa registrata");
     reset();
@@ -84,8 +85,8 @@ export default function SezioneInputBooking({ itinerari, setSpese, showToast }) 
           <Field label="Turno">
             <Select value={form.turnoRaw} onChange={e => set("turnoRaw", e.target.value)} disabled={!form.itId}>
               <option value="">Seleziona turno...</option>
-              {turniDisp.map((t, i) => (
-                <option key={i} value={JSON.stringify(t)}>
+              {turniDisp.map(t => (
+                <option key={t.id} value={JSON.stringify(t)}>
                   Turno {t.n} — {fmtDate(t.in)} → {fmtDate(t.out)}
                 </option>
               ))}

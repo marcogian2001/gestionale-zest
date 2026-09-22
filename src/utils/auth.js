@@ -1,4 +1,5 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "./supabase";
 
 // ── Ruoli disponibili ─────────────────────────────────────────────────────────
 export const RUOLI = {
@@ -22,117 +23,90 @@ export function canAccess(ruolo, sezione) {
   return (PERMESSI[ruolo] || []).includes(sezione);
 }
 
-// ── Hash password semplice (SHA-256 via Web Crypto) ───────────────────────────
-export async function hashPassword(password) {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + "zest_salt_2026");
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+function mapProfilo(p) {
+  return { id: p.id, nome: p.nome, email: p.email, ruolo: p.ruolo, createdAt: p.created_at };
 }
 
-// ── localStorage helpers ──────────────────────────────────────────────────────
-function loadUtenti() {
-  try { return JSON.parse(localStorage.getItem("zest_utenti") || "[]"); } catch { return []; }
-}
-function saveUtenti(utenti) {
-  localStorage.setItem("zest_utenti", JSON.stringify(utenti));
-}
-function loadSession() {
-  try { return JSON.parse(localStorage.getItem("zest_session") || "null"); } catch { return null; }
-}
-function saveSession(user) {
-  localStorage.setItem("zest_session", JSON.stringify(user));
-}
-function clearSession() {
-  localStorage.removeItem("zest_session");
-}
-
-// ── Crea Super Admin di default se non esiste ─────────────────────────────────
-export async function initDefaultAdmin() {
-  const utenti = loadUtenti();
-  if (utenti.length === 0) {
-    const hash = await hashPassword("zest2026!");
-    const admin = {
-      id: "1",
-      nome: "Super Admin",
-      email: "admin@zestfamily.it",
-      passwordHash: hash,
-      ruolo: RUOLI.SUPER_ADMIN,
-      createdAt: new Date().toISOString(),
-    };
-    saveUtenti([admin]);
+// Chiama la Edge Function "admin-utenti" (solo Super Admin)
+async function adminUtenti(body) {
+  const { data, error } = await supabase.functions.invoke("admin-utenti", { body });
+  if (error) {
+    let msg = error.message;
+    try { msg = (await error.context.json()).error || msg; } catch {}
+    throw new Error(msg);
   }
-}
-
-// ── Auth Context ──────────────────────────────────────────────────────────────
-export const AuthContext = createContext(null);
-
-export function useAuth() {
-  return useContext(AuthContext);
+  return data;
 }
 
 // ── Hook principale ───────────────────────────────────────────────────────────
 export function useAuthState() {
-  const [user, setUser]       = useState(loadSession);
-  const [utenti, setUtenti]   = useState(loadUtenti);
+  const [user,    setUser]    = useState(null);
+  const [utenti,  setUtenti]  = useState([]);
+  const [ready,   setReady]   = useState(false);   // sessione iniziale verificata
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState("");
+  const [error,   setError]   = useState("");
 
-  // Inizializza admin di default
-  useEffect(() => { initDefaultAdmin().then(() => setUtenti(loadUtenti())); }, []);
+  const caricaProfilo = useCallback(async (session) => {
+    if (!session) { setUser(null); setReady(true); return; }
+    const { data } = await supabase.from("profili").select("*").eq("id", session.user.id).single();
+    if (!data) {
+      await supabase.auth.signOut();
+      setUser(null);
+      setError("Account senza profilo — contatta il Super Admin");
+    } else {
+      setUser(mapProfilo(data));
+    }
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => caricaProfilo(data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // setTimeout evita chiamate Supabase dentro il callback (deadlock noto)
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") setTimeout(() => caricaProfilo(session), 0);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [caricaProfilo]);
+
+  const caricaUtenti = useCallback(async () => {
+    const { data } = await supabase.from("profili").select("*").order("created_at");
+    setUtenti((data || []).map(mapProfilo));
+  }, []);
+
+  useEffect(() => { if (user?.ruolo === RUOLI.SUPER_ADMIN) caricaUtenti(); }, [user, caricaUtenti]);
 
   const login = async (email, password) => {
     setLoading(true); setError("");
-    try {
-      const hash = await hashPassword(password);
-      const utenti = loadUtenti();
-      const found = utenti.find(u => u.email.toLowerCase() === email.toLowerCase() && u.passwordHash === hash);
-      if (!found) { setError("Email o password non corretti"); setLoading(false); return false; }
-      const session = { id: found.id, nome: found.nome, email: found.email, ruolo: found.ruolo };
-      saveSession(session);
-      setUser(session);
-      setLoading(false);
-      return true;
-    } catch { setError("Errore durante il login"); setLoading(false); return false; }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      setError(error.message === "Invalid login credentials" ? "Email o password non corretti" : "Errore durante il login");
+      return false;
+    }
+    return true;
   };
 
-  const logout = () => { clearSession(); setUser(null); };
+  const logout = () => supabase.auth.signOut();
 
   const creaUtente = async ({ nome, email, password, ruolo }) => {
-    const utenti = loadUtenti();
-    if (utenti.find(u => u.email.toLowerCase() === email.toLowerCase())) {
-      throw new Error("Email già in uso");
-    }
-    const hash = await hashPassword(password);
-    const nuovo = { id: Date.now().toString(), nome, email, passwordHash: hash, ruolo, createdAt: new Date().toISOString() };
-    const aggiornati = [...utenti, nuovo];
-    saveUtenti(aggiornati);
-    setUtenti(aggiornati);
-    return nuovo;
+    await adminUtenti({ action: "crea", nome, email, password, ruolo });
+    await caricaUtenti();
   };
 
   const modificaUtente = async (id, { nome, email, ruolo }) => {
-    const utenti = loadUtenti();
-    const aggiornati = utenti.map(u => u.id === id ? { ...u, nome, email, ruolo } : u);
-    saveUtenti(aggiornati);
-    setUtenti(aggiornati);
+    await adminUtenti({ action: "modifica", id, nome, email, ruolo });
+    await caricaUtenti();
+    if (id === user?.id) setUser(u => ({ ...u, nome, email, ruolo }));
   };
 
-  const reimpostaPassword = async (id, nuovaPassword) => {
-    const hash = await hashPassword(nuovaPassword);
-    const utenti = loadUtenti();
-    const aggiornati = utenti.map(u => u.id === id ? { ...u, passwordHash: hash } : u);
-    saveUtenti(aggiornati);
-    setUtenti(aggiornati);
+  const reimpostaPassword = async (id, password) => {
+    await adminUtenti({ action: "password", id, password });
   };
 
-  const eliminaUtente = (id) => {
-    const utenti = loadUtenti();
-    const aggiornati = utenti.filter(u => u.id !== id);
-    saveUtenti(aggiornati);
-    setUtenti(aggiornati);
+  const eliminaUtente = async (id) => {
+    await adminUtenti({ action: "elimina", id });
+    await caricaUtenti();
   };
 
-  return { user, utenti, loading, error, login, logout, creaUtente, modificaUtente, reimpostaPassword, eliminaUtente };
+  return { user, utenti, ready, loading, error, login, logout, creaUtente, modificaUtente, reimpostaPassword, eliminaUtente };
 }

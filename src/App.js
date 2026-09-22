@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { usePersistedState } from "./utils/helpers";
+import { useZestData } from "./utils/db";
 import { useAuthState, canAccess, RUOLI_LABEL } from "./utils/auth";
 
 import SezioneItinerari    from "./sections/Itinerari";
@@ -9,7 +9,7 @@ import SezioneRiepilogo    from "./sections/Riepilogo";
 import SezioneImpostazioni from "./sections/Impostazioni";
 import SezioneUtenti       from "./sections/Utenti";
 import LoginPage           from "./components/LoginPage";
-import { Toast }           from "./components/UI";
+import { Toast, ConfirmHost } from "./components/UI";
 
 const NAV = [
   { id: "itinerari",    label: "Itinerari" },
@@ -21,24 +21,25 @@ const NAV = [
 ];
 
 export default function App() {
-  const { user, utenti, loading: authLoading, error: authError, login, logout,
+  const { user, utenti, ready, loading: authLoading, error: authError, login, logout,
           creaUtente, modificaUtente, reimpostaPassword, eliminaUtente } = useAuthState();
 
-  const [section,   setSection]   = useState("itinerari");
-  const [itinerari, setItinerari] = usePersistedState("zest_itinerari", []);
-  const [spese,     setSpese]     = usePersistedState("zest_spese", []);
-  const [clientId]                = usePersistedState("zest_google_client_id", "");
-  const [toast,     setToast]     = useState("");
-
-  useEffect(() => { window._googleClientId = clientId; }, [clientId]);
-  useEffect(() => { if (user) setSection("itinerari"); }, [user]);
-  useEffect(() => { if (user && !canAccess(user.ruolo, section)) setSection("itinerari"); }, [user, section]);
+  const [section, setSection] = useState("itinerari");
+  const [toast,   setToast]   = useState("");
 
   const showToast = useCallback((msg) => {
     setToast(msg); setTimeout(() => setToast(""), 2800);
   }, []);
 
-  if (!user) return <LoginPage onLogin={login} loading={authLoading} error={authError} />;
+  const db = useZestData(!!user, showToast);
+  const clientId = db.impostazioni.google_client_id || "";
+
+  useEffect(() => { window._googleClientId = clientId; }, [clientId]);
+  useEffect(() => { if (user) setSection("itinerari"); }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (user && !canAccess(user.ruolo, section)) setSection("itinerari"); }, [user, section]);
+
+  if (!ready) return <div style={{ padding: "3rem", textAlign: "center", color: "#9CA3AF", fontFamily: "'DM Sans','Segoe UI',system-ui,sans-serif" }}>Caricamento...</div>;
+  if (!user)  return <LoginPage onLogin={login} loading={authLoading} error={authError} />;
 
   const navTop    = NAV.filter(x => !x.bottom  && canAccess(user.ruolo, x.id));
   const navBottom = NAV.filter(x =>  x.bottom  && canAccess(user.ruolo, x.id));
@@ -69,15 +70,20 @@ export default function App() {
       </nav>
 
       <main style={{ marginLeft:210, flex:1, padding:"2rem 2.5rem", maxWidth:"calc(100vw - 210px)" }}>
-        {section==="itinerari"    && <SezioneItinerari    itinerari={itinerari} setItinerari={setItinerari} showToast={showToast} />}
-        {section==="booking"      && <SezioneInputBooking itinerari={itinerari} setSpese={setSpese}         showToast={showToast} />}
-        {section==="budget"       && <SezioneBudget       itinerari={itinerari} spese={spese} setSpese={setSpese} />}
-        {section==="riepilogo"    && <SezioneRiepilogo    itinerari={itinerari} spese={spese} />}
-        {section==="impostazioni" && <SezioneImpostazioni showToast={showToast} />}
+        {db.loading ? (
+          <div style={{ padding: "3rem", textAlign: "center", color: "#9CA3AF" }}>Caricamento dati...</div>
+        ) : <>
+        {section==="itinerari"    && <SezioneItinerari    db={db} showToast={showToast} />}
+        {section==="booking"      && <SezioneInputBooking db={db} showToast={showToast} />}
+        {section==="budget"       && <SezioneBudget       db={db} />}
+        {section==="riepilogo"    && <SezioneRiepilogo    itinerari={db.itinerari} spese={db.spese} />}
+        {section==="impostazioni" && <SezioneImpostazioni db={db} showToast={showToast} />}
         {section==="utenti"       && <SezioneUtenti utenti={utenti} currentUser={user} onCrea={creaUtente} onModifica={modificaUtente} onReimposta={reimpostaPassword} onElimina={eliminaUtente} showToast={showToast} />}
+        </>}
       </main>
 
       <Toast msg={toast} />
+      <ConfirmHost />
     </div>
   );
 }

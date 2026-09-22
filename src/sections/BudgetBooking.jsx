@@ -3,10 +3,12 @@ import { fmt, fmtDate, CATEGORIE } from "../utils/helpers";
 import {
   SectionTitle, Field, Select, Empty, MetricCard,
   Th, Td, tableStyle, btnDanger,
+  conferma,
 } from "../components/UI";
 import { Badge, TurnoBadge } from "../components/UI";
 
-export default function SezioneBudget({ itinerari, spese, setSpese }) {
+export default function SezioneBudget({ db }) {
+  const { itinerari, spese } = db;
   const [fIt,  setFIt]  = useState("");
   const [fT,   setFT]   = useState("");
   const [fCat, setFCat] = useState("");
@@ -26,7 +28,10 @@ export default function SezioneBudget({ itinerari, spese, setSpese }) {
   const totPos = filtered.reduce((a, s) => a + (s.importo >= 0 ? s.importo : 0), 0);
   const totNeg = filtered.reduce((a, s) => a + (s.importo <  0 ? s.importo : 0), 0);
 
-  const deleteSpesa = (id) => setSpese(prev => prev.filter(s => s.id !== id));
+  const deleteSpesa = async (s) => {
+    if (!(await conferma(`Eliminare la spesa "${s.desc || s.fornitore}" da € ${fmt(s.importo)}?`))) return;
+    db.eliminaSpesa(s.id);
+  };
 
   return (
     <div>
@@ -46,8 +51,8 @@ export default function SezioneBudget({ itinerari, spese, setSpese }) {
           <Field label="Turno">
             <Select value={fT} onChange={e => setFT(e.target.value)} disabled={!fIt}>
               <option value="">Tutti</option>
-              {turniDisp.map((t, i) => (
-                <option key={i} value={t.n}>T{t.n}: {fmtDate(t.in)} → {fmtDate(t.out)}</option>
+              {turniDisp.map(t => (
+                <option key={t.id} value={t.n}>T{t.n}: {fmtDate(t.in)} → {fmtDate(t.out)}</option>
               ))}
             </Select>
           </Field>
@@ -99,7 +104,7 @@ export default function SezioneBudget({ itinerari, spese, setSpese }) {
                       ? <a href={s.driveUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", textDecoration: "none", fontWeight: 500 }}>📄 Apri</a>
                       : <span style={{ fontSize: 10, color: "#D1D5DB" }}>—</span>}
                   </Td>
-                  <Td><button onClick={() => deleteSpesa(s.id)} style={btnDanger}>✕</button></Td>
+                  <Td><button onClick={() => deleteSpesa(s)} style={btnDanger}>✕</button></Td>
                 </tr>
               ))}
             </tbody>

@@ -1,18 +1,13 @@
-import { useState, useEffect } from "react";
-import { usePersistedState } from "../utils/helpers";
+import { useState } from "react";
 import { DRIVE_FOLDER_ID } from "../utils/driveUpload";
 import { Card, CardTitle, SectionTitle, Field, Input, btnPrimary } from "../components/UI";
 
-export default function SezioneImpostazioni({ showToast }) {
-  const [clientId, setClientId] = usePersistedState("zest_google_client_id", "");
-  const [input, setInput]       = useState(clientId);
+export default function SezioneImpostazioni({ db, showToast }) {
+  const clientId          = db.impostazioni.google_client_id || "";
+  const [input, setInput] = useState(clientId);
 
-  useEffect(() => { window._googleClientId = clientId; }, [clientId]);
-
-  const save = () => {
-    setClientId(input.trim());
-    window._googleClientId = input.trim();
-    showToast("Impostazioni salvate");
+  const save = async () => {
+    if (await db.salvaImpostazione("google_client_id", input.trim())) showToast("Impostazioni salvate");
   };
 
   return (
@@ -24,7 +19,7 @@ export default function SezioneImpostazioni({ showToast }) {
         <CardTitle>Integrazione Google Drive</CardTitle>
         <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
           Inserisci il tuo Google OAuth Client ID per abilitare il caricamento automatico
-          delle fatture su Google Drive. Viene salvato nel browser — non devi reinserirlo ad ogni accesso.
+          delle fatture su Google Drive. Viene salvato nel database ed è valido per tutti gli utenti.
         </p>
         <Field label="Google OAuth Client ID">
           <Input
