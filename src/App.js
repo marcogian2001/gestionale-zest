@@ -27,6 +27,7 @@ export default function App() {
   const [section, setSection] = useState("itinerari");
   const [toast,   setToast]   = useState("");
   const [cambioPsw, setCambioPsw] = useState(false);
+  const [menuAperto, setMenuAperto] = useState(false);   // barra laterale su telefono
 
   const showToast = useCallback((msg) => {
     setToast(msg); setTimeout(() => setToast(""), 2800);
@@ -63,7 +64,31 @@ export default function App() {
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: FONT, background: "#F6F7F9", color: "#111827" }}>
 
-      <nav style={{
+      {/* Barra in alto: solo su telefono */}
+      <div className="barra-mobile" style={{
+        display: "none", position: "fixed", top: 0, left: 0, right: 0, height: 56, zIndex: 30,
+        background: "#fff", borderBottom: "1px solid #ECEEF1", alignItems: "center", gap: 12, padding: "0 14px",
+      }}>
+        <button onClick={() => setMenuAperto(true)} aria-label="Apri il menu" style={{
+          fontSize: 20, lineHeight: 1, background: "#fff", border: "1px solid #E5E7EB",
+          borderRadius: 10, padding: "6px 11px", cursor: "pointer",
+        }}>☰</button>
+        <img src="/logo.png" alt="Zest" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} />
+        <div style={{ fontSize: 14, fontWeight: 800 }}>ZEST</div>
+        {alertAperti > 0 && (
+          <span style={{ marginLeft: "auto", background: "#EF4444", color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "2px 7px" }}>
+            {alertAperti}
+          </span>
+        )}
+      </div>
+
+      {menuAperto && (
+        <div onClick={() => setMenuAperto(false)} className="sfondo-menu" style={{
+          position: "fixed", inset: 0, background: "rgba(17,24,39,0.35)", zIndex: 40, display: "none",
+        }} />
+      )}
+
+      <nav className={`barra-laterale${menuAperto ? " aperta" : ""}`} style={{
         width: 232, minWidth: 232, background: "#fff", borderRight: "1px solid #ECEEF1",
         padding: "1.4rem 0 1rem", display: "flex", flexDirection: "column",
         position: "fixed", top: 0, bottom: 0, left: 0, zIndex: 10, overflowY: "auto",
@@ -89,7 +114,7 @@ export default function App() {
                   <NavButton
                     key={item.id} item={item}
                     active={section === item.id}
-                    onClick={() => setSection(item.id)}
+                    onClick={() => { setSection(item.id); setMenuAperto(false); }}
                     badge={item.id === "contabilita" ? alertAperti : 0}
                   />
                 ))}
@@ -120,7 +145,7 @@ export default function App() {
         </div>
       </nav>
 
-      <main style={{ marginLeft: 232, flex: 1, minWidth: 0, padding: "2.1rem 2.4rem 3rem", maxWidth: "calc(100vw - 232px)", boxSizing: "border-box" }}>
+      <main className="contenuto" style={{ marginLeft: 232, flex: 1, minWidth: 0, padding: "2.1rem 2.4rem 3rem", maxWidth: "calc(100vw - 232px)", boxSizing: "border-box" }}>
         {db.loading ? <Schermo>Caricamento dati...</Schermo> : <>
           {section === "itinerari"    && <SezioneItinerari    db={db} showToast={showToast} />}
           {section === "booking"      && <SezioneInputBooking db={db} user={user} showToast={showToast} />}

@@ -36,8 +36,8 @@ export default function SezioneContabilita({ db, showToast }) {
 
       <SectionSubTitle>Alert da gestire</SectionSubTitle>
       {aperti.length === 0 ? <Empty>Nessun alert aperto</Empty> : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <div className="tabella-scroll" style={{ overflowX: "auto" }}>
+          <div><table style={tableStyle}>
             <thead>
               <tr>{["Itinerario", "Cat.", "Descrizione", "Importo", "Documento", "Cosa fare", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
             </thead>
@@ -64,14 +64,14 @@ export default function SezioneContabilita({ db, showToast }) {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
       <SectionSubTitle>Documenti in attesa</SectionSubTitle>
       {inAttesa.length === 0 ? <Empty>Nessun documento in attesa</Empty> : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <div className="tabella-scroll" style={{ overflowX: "auto" }}>
+          <div><table style={tableStyle}>
             <thead>
               <tr>{["Itinerario", "Cat.", "Descrizione", "Importo", "Documento", "Tipo", "Data pag.", "Inserito da"].map(h => <Th key={h}>{h}</Th>)}</tr>
             </thead>
@@ -85,15 +85,15 @@ export default function SezioneContabilita({ db, showToast }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
           <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>I documenti si caricano da Budget booking con il pulsante «↑ Carica».</div>
         </div>
       )}
 
       {gestiti.length > 0 && <>
         <SectionSubTitle>Alert gestiti di recente</SectionSubTitle>
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <div className="tabella-scroll" style={{ overflowX: "auto" }}>
+          <div><table style={tableStyle}>
             <thead>
               <tr>{["Itinerario", "Cat.", "Descrizione", "Importo", "Documento", "Alert", "Gestito da", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
             </thead>
@@ -107,7 +107,7 @@ export default function SezioneContabilita({ db, showToast }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       </>}
     </div>

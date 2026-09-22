@@ -112,8 +112,8 @@ export default function SezioneBudget({ db, user, showToast }) {
       {filtered.length === 0 ? (
         <Empty>Nessuna spesa con i filtri selezionati</Empty>
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <div className="tabella-scroll" style={{ overflowX: "auto" }}>
+          <div><table style={tableStyle}>
             <thead>
               <tr>
                 {["Itinerario","Turno","Cat.","Descrizione","Fornitore","Importo","Data","Fattura","Mod.","Da","Doc.","Utente",""].map(h => <Th key={h}>{h}</Th>)}
@@ -156,7 +156,7 @@ export default function SezioneBudget({ db, user, showToast }) {
                 <td colSpan={7} />
               </tr>
             </tfoot>
-          </table>
+          </table></div>
         </div>
       )}
       {inModifica && <ModificaSpesa spesa={inModifica} db={db} onClose={() => setInModifica(null)} />}
@@ -201,7 +201,7 @@ function ModificaSpesa({ spesa, db, onClose }) {
             Itinerario, turno e categoria seguono la spesa rimborsata. L'importo dei rimborsi è negativo.
           </div>
         )}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="griglia-form" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label="Itinerario">
             <Select value={form.itId} onChange={e => { set("itId", e.target.value); set("turnoId", ""); }} disabled={bloccaCollegamento}>
               {db.itinerari.map(it => <option key={it.id} value={it.id}>{it.ni}</option>)}
@@ -368,7 +368,7 @@ function CaricaDocumento({ spesa, db, showToast, onClose }) {
         <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16 }}>
           {spesa.desc || spesa.fornitore} · {spesa.itNome} · € {fmt(spesa.importo)}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="griglia-form" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label={spesa.tipo === "rimborso" ? "N. documento di storno" : "N. Fattura / Ricevuta"}>
             <Input value={fattura} onChange={e => setFattura(e.target.value)} placeholder={spesa.tipo === "rimborso" ? "es. NC-2026-014" : "es. FT-123"} autoFocus />
           </Field>

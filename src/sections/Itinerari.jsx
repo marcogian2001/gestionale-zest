@@ -74,7 +74,7 @@ export default function SezioneItinerari({ db, showToast }) {
       {/* Nuovo itinerario */}
       <Card>
         <CardTitle>Nuovo itinerario</CardTitle>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+        <div className="griglia-form" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
           <Field label="Nome interno">
             <Input value={ni} onChange={e => setNi(e.target.value)} placeholder="es. LAPPONIA POLAR NIGHT" />
           </Field>
@@ -87,7 +87,7 @@ export default function SezioneItinerari({ db, showToast }) {
             Turni
           </label>
           {turniNew.map((t, i) => (
-            <div key={t.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+            <div key={t.id} className="riga-turno" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
               <span style={{ fontSize: 11, color: "#9CA3AF", minWidth: 22 }}>T{i + 1}</span>
               <Input type="date" value={t.in} onChange={e => updateTurno(t.id, "in", e.target.value)} style={{ flex: 1 }} />
               <span style={{ fontSize: 12, color: "#9CA3AF" }}>→</span>
@@ -122,7 +122,7 @@ export default function SezioneItinerari({ db, showToast }) {
             {managed.turni.length === 0 ? (
               <Empty>Nessun turno</Empty>
             ) : (
-              <table style={tableStyle}>
+              <div className="tabella-scroll"><table style={tableStyle}>
                 <thead>
                   <tr>{["Turno", "Data in", "Data out", "Stato", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
                 </thead>
@@ -153,7 +153,7 @@ export default function SezioneItinerari({ db, showToast }) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
 
             {/* Aggiungi nuovi turni */}
@@ -171,7 +171,7 @@ export default function SezioneItinerari({ db, showToast }) {
                     Nuovi turni
                   </div>
                   {turniAdd.map((t, i) => (
-                    <div key={t.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+                    <div key={t.id} className="riga-turno" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
                       <span style={{ fontSize: 11, color: "#9CA3AF", minWidth: 22 }}>T{managed.turni.length + i + 1}</span>
                       <Input type="date" value={t.in} onChange={e => updateTurnoAdd(t.id, "in", e.target.value)} style={{ flex: 1 }} />
                       <span style={{ fontSize: 12, color: "#9CA3AF" }}>→</span>

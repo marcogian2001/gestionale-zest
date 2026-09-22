@@ -61,7 +61,7 @@ export default function SezioneUtenti({ utenti, ruoli, onCrea, onModifica, onRei
       {/* Form crea / modifica */}
       <Card>
         <CardTitle>{editId ? "Modifica utente" : "Nuovo utente"}</CardTitle>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="griglia-form" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label="Nome"><Input value={form.nome} onChange={e => set("nome", e.target.value)} placeholder="es. Simone Lodovici" /></Field>
           <Field label="Email"><Input type="email" value={form.email} onChange={e => set("email", e.target.value)} placeholder="es. simone@zestfamily.it" /></Field>
           {!editId && (
@@ -131,8 +131,8 @@ export default function SezioneUtenti({ utenti, ruoli, onCrea, onModifica, onRei
       {/* Lista utenti */}
       <SectionTitle style={{ marginTop: 24 }}>Utenti registrati</SectionTitle>
       {utenti.length === 0 ? <Empty>Nessun utente</Empty> : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <div className="tabella-scroll" style={{ overflowX: "auto" }}>
+          <div><table style={tableStyle}>
             <thead>
               <tr>{["Nome", "Email", "Ruoli", "Stato", "Creato il", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
             </thead>
@@ -205,7 +205,7 @@ export default function SezioneUtenti({ utenti, ruoli, onCrea, onModifica, onRei
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </div>

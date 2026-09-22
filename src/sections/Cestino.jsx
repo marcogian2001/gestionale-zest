@@ -46,8 +46,8 @@ export default function SezioneCestino({ db, showToast }) {
 
       <SectionSubTitle>Spese eliminate</SectionSubTitle>
       {spese.length === 0 ? <Empty>Nessuna spesa nel cestino</Empty> : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <div className="tabella-scroll" style={{ overflowX: "auto" }}>
+          <div><table style={tableStyle}>
             <thead>
               <tr>{["Itinerario", "Turno", "Cat.", "Descrizione", "Fornitore", "Importo", "Eliminata da", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
             </thead>
@@ -65,13 +65,13 @@ export default function SezioneCestino({ db, showToast }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
 
       <SectionSubTitle>Itinerari eliminati</SectionSubTitle>
       {itinerari.length === 0 ? <Empty>Nessun itinerario nel cestino</Empty> : (
-        <table style={tableStyle}>
+        <div className="tabella-scroll"><table style={tableStyle}>
           <thead>
             <tr>{["Nome interno", "Nome sito", "Eliminato da", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
           </thead>
@@ -85,7 +85,7 @@ export default function SezioneCestino({ db, showToast }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       )}
     </div>
   );

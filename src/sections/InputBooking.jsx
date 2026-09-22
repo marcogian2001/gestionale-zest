@@ -171,7 +171,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
     <div>
       <SectionTitle>Input booking</SectionTitle>
       <Card>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="griglia-form" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
 
           <Field label="Itinerario">
             <Select value={form.itId} onChange={e => setForm(f => ({ ...f, itId: e.target.value, turnoRaw: "", origineId: "" }))}>

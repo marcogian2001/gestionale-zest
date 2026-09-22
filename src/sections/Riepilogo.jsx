@@ -76,7 +76,7 @@ export default function SezioneRiepilogo({ itinerari, spese }) {
                 </div>
 
                 {/* Dettaglio spese */}
-                <table style={tableStyle}>
+                <div className="tabella-scroll"><table style={tableStyle}>
                   <thead>
                     <tr>{["Cat.", "Descrizione", "Fornitore", "Importo", "Data", "Da", "Doc."].map(h => <Th key={h}>{h}</Th>)}</tr>
                   </thead>
@@ -97,7 +97,7 @@ export default function SezioneRiepilogo({ itinerari, spese }) {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </Card>
             );
           })}

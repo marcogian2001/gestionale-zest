@@ -36,3 +36,40 @@ a { color: #2563EB; }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: #DDE1E6; border-radius: 8px; border: 2px solid #F6F7F9; }
 ::-webkit-scrollbar-thumb:hover { background: #C8CDD4; }
+
+/* ── Telefoni e tablet stretti ────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .barra-mobile { display: flex !important; }
+  .sfondo-menu  { display: block !important; }
+
+  .barra-laterale {
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+    z-index: 50 !important;
+    box-shadow: 0 10px 40px rgba(16, 24, 40, 0.18);
+  }
+  .barra-laterale.aperta { transform: translateX(0); }
+
+  .contenuto {
+    margin-left: 0 !important;
+    max-width: 100vw !important;
+    padding: 4.6rem 1rem 2.5rem !important;
+  }
+
+  .griglia-form { grid-template-columns: 1fr !important; }
+
+  /* Le tabelle restano leggibili scorrendo in orizzontale */
+  .tabella-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabella-scroll table { min-width: 640px; }
+
+  h2 { font-size: 18px !important; }
+}
+
+@media (max-width: 520px) {
+  .contenuto { padding: 4.6rem 0.75rem 2.5rem !important; }
+}
+
+@media (max-width: 860px) {
+  .riga-turno { flex-wrap: wrap; }
+  .riga-turno input[type="date"] { min-width: 132px; }
+}

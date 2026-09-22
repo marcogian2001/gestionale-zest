@@ -116,8 +116,8 @@ export default function SezioneRegistro({ db, showToast }) {
       ) : log.length === 0 ? (
         <Empty>Nessuna attività registrata</Empty>
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table style={tableStyle}>
+        <div className="tabella-scroll" style={{ overflowX: "auto" }}>
+          <div><table style={tableStyle}>
             <thead>
               <tr>{["Data e ora", "Utente", "Azione", "Sezione", "Cosa", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
             </thead>
@@ -140,7 +140,7 @@ export default function SezioneRegistro({ db, showToast }) {
                 );
               })}
             </tbody>
-          </table>
+          </table></div>
         </div>
       )}
     </div>
