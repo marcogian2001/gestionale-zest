@@ -110,7 +110,7 @@ export default function SezioneBudget({ db, showToast }) {
                   <Td style={{ color: "#9CA3AF", fontSize: 10 }}>{s.fattura}</Td>
                   <Td style={{ fontSize: 11 }}>{s.modalita}</Td>
                   <Td style={{ fontSize: 11 }}>{s.da}</Td>
-                  <Td><DocCell spesa={s} db={db} showToast={showToast} /></Td>
+                  <Td><DocCell spesa={s} db={db} spese={spese} showToast={showToast} /></Td>
                   <Td><AutoreCell item={s} nomeUtente={db.nomeUtente} /></Td>
                   <Td>
                     <div style={{ display: "flex", gap: 4 }}>
@@ -251,8 +251,19 @@ function RimborsoBadge({ spesa, spese }) {
 }
 
 // ── Colonna documento: link, stato, caricamento successivo ──────────────────
-function DocCell({ spesa, db, showToast }) {
+function DocCell({ spesa, db, spese, showToast }) {
   const [apri, setApri] = useState(false);
+  const rimborso = spesa.tipo === "rimborso";
+  const origine  = rimborso ? spese.find(x => x.id === spesa.origineId) : null;
+
+  const nonRecuperabile = async () => {
+    const cosa = rimborso ? "il documento di storno" : "la fattura";
+    if (!(await conferma(
+      `Segnare ${cosa} come non recuperabile? La scelta è definitiva: non sarà più possibile caricare il documento. Verrà inviato un alert alla contabilità.`,
+      "Segna non recuperabile",
+    ))) return;
+    if (await db.segnaNonRecuperabile(spesa, origine)) showToast("Segnata come non recuperabile");
+  };
 
   if (spesa.driveUrl) {
     return <a href={spesa.driveUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: "#2563EB", textDecoration: "none", fontWeight: 500, whiteSpace: "nowrap" }}>📄 Apri</a>;
@@ -261,7 +272,10 @@ function DocCell({ spesa, db, showToast }) {
     return (
       <div style={{ whiteSpace: "nowrap" }}>
         <div style={{ fontSize: 10, color: "#92400E", fontWeight: 600 }}>⏳ In attesa</div>
-        <button onClick={() => setApri(true)} style={{ ...btnSm, marginTop: 3 }}>↑ Carica</button>
+        <div style={{ display: "flex", gap: 4, marginTop: 3 }}>
+          <button onClick={() => setApri(true)} style={btnSm}>↑ Carica</button>
+          <button onClick={nonRecuperabile} style={btnSm}>Non recuperabile</button>
+        </div>
         {apri && <CaricaDocumento spesa={spesa} db={db} showToast={showToast} onClose={() => setApri(false)} />}
       </div>
     );
@@ -281,9 +295,10 @@ function CaricaDocumento({ spesa, db, showToast, onClose }) {
   const nomeFile = file ? buildFileName(dataFattura, spesa.itNome, spesa.turnoIn, spesa.fornitore, fattura, file.name) : "";
 
   const salva = async () => {
-    if (!fattura.trim())  return setErrore("Inserisci il numero della fattura");
-    if (!dataFattura)     return setErrore("Inserisci la data della fattura");
-    if (!file)            return setErrore("Scegli il file della fattura");
+    const doc = spesa.tipo === "rimborso" ? "del documento di storno" : "della fattura";
+    if (!fattura.trim())  return setErrore(`Inserisci il numero ${doc}`);
+    if (!dataFattura)     return setErrore(`Inserisci la data ${doc}`);
+    if (!file)            return setErrore(`Scegli il file ${doc}`);
     setErrore(""); setUploading(true);
     try {
       const areaBooking = db.area(AREA_BOOKING);
@@ -291,7 +306,7 @@ function CaricaDocumento({ spesa, db, showToast, onClose }) {
         dataDoc: dataFattura, area: areaBooking, cache: areaBooking && db.cacheCartelle(areaBooking.id),
       });
       if (await db.collegaDocumento(spesa.id, url, { fattura: fattura.trim(), dataFattura })) {
-        showToast("Fattura caricata su Drive");
+        showToast("Documento caricato su Drive");
         onClose();
       }
     } catch (e) {
@@ -304,15 +319,17 @@ function CaricaDocumento({ spesa, db, showToast, onClose }) {
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 16, padding: "1.5rem", width: 460, maxWidth: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>Carica la fattura</div>
+        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>
+          {spesa.tipo === "rimborso" ? "Carica il documento di storno" : "Carica la fattura"}
+        </div>
         <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 16 }}>
           {spesa.desc || spesa.fornitore} · {spesa.itNome} · € {fmt(spesa.importo)}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field label="N. Fattura / Ricevuta">
-            <Input value={fattura} onChange={e => setFattura(e.target.value)} placeholder="es. FT-123" autoFocus />
+          <Field label={spesa.tipo === "rimborso" ? "N. documento di storno" : "N. Fattura / Ricevuta"}>
+            <Input value={fattura} onChange={e => setFattura(e.target.value)} placeholder={spesa.tipo === "rimborso" ? "es. NC-2026-014" : "es. FT-123"} autoFocus />
           </Field>
-          <Field label="Data fattura">
+          <Field label={spesa.tipo === "rimborso" ? "Data documento" : "Data fattura"}>
             <Input type="date" value={dataFattura} onChange={e => setDataFattura(e.target.value)} />
           </Field>
         </div>

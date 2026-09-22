@@ -27,7 +27,7 @@ export const STATI_DOC = {
   caricato:         "Caricato",
   in_attesa:        "Fattura in attesa",
   non_recuperabile: "Non recuperabile",
-  senza_storno:     "Senza doc. storno",
+  senza_storno:     "Storno non recuperabile",
 };
 
 // Importo ancora rimborsabile di un pagamento (importo − rimborsi già registrati)

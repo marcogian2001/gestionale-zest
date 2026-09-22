@@ -85,8 +85,8 @@ export default function SezioneInputBooking({ db, user, showToast }) {
       const imp = parseFloat(form.importo);
       if (!(imp > 0)) return "Inserisci l'importo rimborsato";
       if (imp > residuo + 0.001) return `L'importo supera quanto ancora rimborsabile (€ ${fmt(residuo)})`;
-      if (!file && !form.senzaStorno) return "Carica il documento di storno oppure seleziona «Non ho documento di storno»";
-      if (!form.senzaStorno) {
+      if (!file && !form.senzaStorno && !form.inAttesa) return "Carica il documento di storno oppure seleziona una delle due opzioni sotto";
+      if (!form.senzaStorno && !form.inAttesa) {
         if (!form.fattura.trim()) return "Inserisci il numero del documento di storno";
         if (!form.dataFattura)    return "Inserisci la data del documento di storno";
       }
@@ -156,8 +156,8 @@ export default function SezioneInputBooking({ db, user, showToast }) {
       modalita: form.modalita, da: nomeDa, note: form.note,
       driveUrl,
       statoDoc: driveUrl ? "caricato"
-        : rimborso ? "senza_storno"
-        : form.inAttesa ? "in_attesa" : "non_recuperabile",
+        : form.inAttesa ? "in_attesa"
+        : rimborso ? "senza_storno" : "non_recuperabile",
       alert: alert.length ? alert.join(" ") : null,
     });
     setSaving(false);
@@ -358,10 +358,16 @@ export default function SezioneInputBooking({ db, user, showToast }) {
             />
             <div style={{ display: "flex", gap: 18, flexWrap: "wrap", marginTop: 8 }}>
               {rimborso ? (
-                <label style={labelCheck}>
-                  <input type="checkbox" checked={form.senzaStorno} onChange={e => flagDoc("senzaStorno", e.target.checked)} />
-                  Non ho documento di storno
-                </label>
+                <>
+                  <label style={labelCheck}>
+                    <input type="checkbox" checked={form.inAttesa} onChange={e => flagDoc("inAttesa", e.target.checked)} />
+                    Documento di storno in attesa <span style={{ color: "#9CA3AF" }}>(lo carichi quando arriva, da Budget booking)</span>
+                  </label>
+                  <label style={labelCheck}>
+                    <input type="checkbox" checked={form.senzaStorno} onChange={e => flagDoc("senzaStorno", e.target.checked)} />
+                    Non ho documento di storno <span style={{ color: "#9CA3AF" }}>(non recuperabile, invia un alert)</span>
+                  </label>
+                </>
               ) : (
                 <>
                   <label style={labelCheck}>
@@ -375,6 +381,11 @@ export default function SezioneInputBooking({ db, user, showToast }) {
                 </>
               )}
             </div>
+            {rimborso && form.inAttesa && (
+              <div style={{ fontSize: 11, color: "#92400E", marginTop: 6 }}>
+                Il rimborso resta in attesa del documento di storno: da Budget booking potrai caricarlo oppure segnarlo come non recuperabile.
+              </div>
+            )}
             {rimborso && form.senzaStorno && (
               <div style={{ fontSize: 11, color: "#92400E", marginTop: 6 }}>
                 Il documento sarà registrato come <b>{docRimb || "Rimb-doc-…"}</b>, senza file collegato. Verrà inviato un alert alla contabilità per registrare un documento fittizio ai fini IVA.

@@ -137,6 +137,21 @@ export function useZestData(enabled, showToast) {
       fattura, data_fattura: dataFattura,
     }).eq("id", id));
 
+  // Da «in attesa» a «non recuperabile»: passaggio definitivo, con alert alla contabilità
+  const segnaNonRecuperabile = (spesa, origine) => {
+    const rimborso = spesa.tipo === "rimborso";
+    const fattura = rimborso ? `Rimb-doc-${origine?.fattura || "senza-numero"}` : spesa.fattura;
+    const alert = rimborso
+      ? `Rimborso senza documento di storno: registrare un documento fittizio ai fini IVA (rif. fattura ${origine?.fattura || "senza numero"}).`
+      : "Fattura non recuperabile: verificare il trattamento contabile della spesa senza documento.";
+    return run(supabase.from("spese").update({
+      stato_doc: rimborso ? "senza_storno" : "non_recuperabile",
+      fattura,
+      alert_contabilita: alert,
+      alert_risolto_at: null,
+    }).eq("id", spesa.id));
+  };
+
   const risolviAlert = (id, risolto = true) =>
     run(supabase.from("spese").update({ alert_risolto_at: risolto ? new Date().toISOString() : null }).eq("id", id));
 
@@ -187,6 +202,6 @@ export function useZestData(enabled, showToast) {
     aree, area, salvaArea, creaArea, cacheCartelle,
     ripristina, annullaAzione,
     creaItinerario, eliminaItinerario, setTurnoAnnullato, aggiungiTurni,
-    creaSpesa, modificaSpesa, eliminaSpesa, collegaDocumento, risolviAlert, salvaImpostazione,
+    creaSpesa, modificaSpesa, eliminaSpesa, collegaDocumento, segnaNonRecuperabile, risolviAlert, salvaImpostazione,
   };
 }
