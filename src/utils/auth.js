@@ -9,10 +9,10 @@ export const GRUPPI = [
     id: "viaggi", label: "Viaggi",
     moduli: [
       { id: "itinerari", label: "Itinerari" },
-      { id: "booking",   label: "Input booking" },
-      { id: "budget",    label: "Budget booking" },
-      { id: "riepilogo", label: "Riepilogo per itinerario" },
-      { id: "costi_comuni", label: "Costi comuni" },
+      { id: "booking",   label: "Input Costi Viaggi" },
+      { id: "budget",    label: "Budget e Gestione Costi Viaggi" },
+      { id: "riepilogo", label: "Recap Itinerario" },
+      { id: "costi_comuni", label: "Costi Comuni Viaggi" },
     ],
   },
   {

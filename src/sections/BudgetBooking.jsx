@@ -61,7 +61,7 @@ export default function SezioneBudget({ db, user, showToast }) {
 
   return (
     <div>
-      <SectionTitle>Budget booking</SectionTitle>
+      <SectionTitle>Budget e Gestione Costi Viaggi</SectionTitle>
 
       {/* Filtri */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16, alignItems: "flex-end" }}>

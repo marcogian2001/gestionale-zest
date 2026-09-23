@@ -86,7 +86,7 @@ export default function SezioneContabilita({ db, showToast }) {
               ))}
             </tbody>
           </table></div>
-          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>I documenti si caricano da Budget booking con il pulsante «↑ Carica».</div>
+          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 6 }}>I documenti si caricano da Budget e Gestione Costi Viaggi con il pulsante «↑ Carica».</div>
         </div>
       )}
 

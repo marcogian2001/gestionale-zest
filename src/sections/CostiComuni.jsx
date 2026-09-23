@@ -92,7 +92,7 @@ export default function SezioneCostiComuni({ db, showToast }) {
 
   return (
     <div>
-      <SectionTitle>Costi comuni</SectionTitle>
+      <SectionTitle>Costi Comuni Viaggi</SectionTitle>
       <p style={{ fontSize: 13, color: "#6B7280", marginTop: -10, marginBottom: 16, lineHeight: 1.6 }}>
         Fatture che coprono più turni. All'inserimento il costo viene diviso in parti uguali:
         qui si sistema la ripartizione definitiva, per importo o in base ai pax, e si conferma con «Gestito».

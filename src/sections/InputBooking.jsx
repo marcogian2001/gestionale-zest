@@ -167,14 +167,14 @@ export default function SezioneInputBooking({ db, user, showToast }) {
 
     if (piuTurni) {
       // Divisione iniziale in parti uguali: resta provvisoria finché non viene
-      // sistemata nella sezione Costi comuni
+      // sistemata nella sezione Costi Comuni Viaggi
       const ok = await db.creaSpeseRipartite(
         { ...comune, provvisoria: true },
         dividiPartiUguali(importo, turniQuote),
       );
       setSaving(false);
       if (!ok) return;
-      showToast(`Costo comune registrato su ${turniQuote.length} turni — da sistemare in Costi comuni`);
+      showToast(`Costo comune registrato su ${turniQuote.length} turni — da sistemare in Costi Comuni Viaggi`);
       reset();
       return;
     }
@@ -204,7 +204,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
 
   return (
     <div>
-      <SectionTitle>Input booking</SectionTitle>
+      <SectionTitle>Input Costi Viaggi</SectionTitle>
       <Card>
         <div className="griglia-form" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
 
@@ -375,7 +375,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
               </div>
               <div style={{ fontSize: 11, color: "#92400E", marginTop: 6, lineHeight: 1.5 }}>
                 Il costo viene diviso <b>in parti uguali</b> tra i turni selezionati e resta in attesa di ripartizione:
-                lo trovi nella sezione <b>Costi comuni</b>, dove sistemare le quote quando i numeri sono definitivi.
+                lo trovi nella sezione <b>Costi Comuni Viaggi</b>, dove sistemare le quote quando i numeri sono definitivi.
               </div>
             </Field>
           )}
@@ -436,7 +436,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
                 <>
                   <label style={labelCheck}>
                     <input type="checkbox" checked={form.inAttesa} onChange={e => flagDoc("inAttesa", e.target.checked)} />
-                    Documento di storno in attesa <span style={{ color: "#9CA3AF" }}>(da caricare alla ricezione in sezione Budget booking)</span>
+                    Documento di storno in attesa <span style={{ color: "#9CA3AF" }}>(da caricare alla ricezione in sezione Budget e Gestione Costi Viaggi)</span>
                   </label>
                   <label style={labelCheck}>
                     <input type="checkbox" checked={form.senzaStorno} onChange={e => flagDoc("senzaStorno", e.target.checked)} />
@@ -447,7 +447,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
                 <>
                   <label style={labelCheck}>
                     <input type="checkbox" checked={form.inAttesa} onChange={e => flagDoc("inAttesa", e.target.checked)} />
-                    Fattura in attesa <span style={{ color: "#9CA3AF" }}>(da caricare alla ricezione in sezione Budget booking)</span>
+                    Fattura in attesa <span style={{ color: "#9CA3AF" }}>(da caricare alla ricezione in sezione Budget e Gestione Costi Viaggi)</span>
                   </label>
                   <label style={labelCheck}>
                     <input type="checkbox" checked={form.nonRecuperabile} onChange={e => flagDoc("nonRecuperabile", e.target.checked)} />
@@ -458,7 +458,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
             </div>
             {rimborso && form.inAttesa && (
               <div style={{ fontSize: 11, color: "#92400E", marginTop: 6 }}>
-                Il rimborso resta in attesa del documento di storno, da caricare alla ricezione in sezione Budget booking, dove è possibile anche segnarlo come non recuperabile.
+                Il rimborso resta in attesa del documento di storno, da caricare alla ricezione in sezione Budget e Gestione Costi Viaggi, dove è possibile anche segnarlo come non recuperabile.
               </div>
             )}
             {rimborso && form.senzaStorno && (

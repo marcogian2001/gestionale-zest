@@ -27,7 +27,7 @@ export default function SezioneRiepilogo({ itinerari, spese }) {
 
   return (
     <div>
-      <SectionTitle>Riepilogo per itinerario</SectionTitle>
+      <SectionTitle>Recap Itinerario</SectionTitle>
 
       <div style={{ maxWidth: 340, marginBottom: 20 }}>
         <Field label="Seleziona itinerario">
