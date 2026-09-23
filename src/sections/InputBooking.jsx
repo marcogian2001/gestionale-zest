@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { fmt, fmtDate, CATEGORIE, MODALITA, STATI_DOC, residuoRimborsabile } from "../utils/helpers";
 import { buildFileName, caricaOrganizzato, AREA_BOOKING } from "../utils/driveUpload";
+import { dividiPartiUguali } from "../components/Ripartizione";
 import {
   Card, SectionTitle, Field, Input, Select, Empty,
   inputStyle, btnPrimary, btnSecondary, btnDanger,
@@ -13,6 +14,7 @@ const FORM_EMPTY = {
   stessaData: false,
   nonMia: false, da: "",
   inAttesa: false, nonRecuperabile: false, senzaStorno: false,
+  piuTurni: false, turniScelti: [],
 };
 
 export default function SezioneInputBooking({ db, user, showToast }) {
@@ -26,6 +28,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const labelCheck = { display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#374151", cursor: "pointer" };
   const rimborso = form.tipo === "rimborso";
+  const piuTurni = form.piuTurni && !rimborso;
 
   const it    = itinerari.find(x => String(x.id) === form.itId);
   const turno = form.turnoRaw ? JSON.parse(form.turnoRaw) : null;
@@ -44,6 +47,11 @@ export default function SezioneInputBooking({ db, user, showToast }) {
   const senzaDoc = form.inAttesa || form.nonRecuperabile || form.senzaStorno;
   const dataPag  = form.stessaData && !senzaDoc ? form.dataFattura : form.data;
   const fornitore = rimborso ? (origine?.fornitore || "") : form.fornitore;
+  // Con la fattura ripartita il nome del file usa il turno che inizia prima
+  const turniQuote = turniDisp.filter(t => form.turniScelti.includes(t.id));
+  const turnoRif = piuTurni
+    ? [...turniQuote].sort((a, b) => a.in.localeCompare(b.in))[0] || null
+    : turno;
 
   // Scegliendo la spesa di riferimento si propone il rimborso totale
   const scegliOrigine = (id) => {
@@ -57,8 +65,8 @@ export default function SezioneInputBooking({ db, user, showToast }) {
 
   useEffect(() => {
     if (!file) { setPreviewName(""); return; }
-    setPreviewName(buildFileName(form.dataFattura, it?.ni || "", turno?.in, fornitore, fattura, file.name));
-  }, [file, form.dataFattura, it, turno, fornitore, fattura]);
+    setPreviewName(buildFileName(form.dataFattura, it?.ni || "", turnoRif?.in, fornitore, fattura, file.name));
+  }, [file, form.dataFattura, it, turnoRif?.in, fornitore, fattura]);
 
   const reset = () => { setForm(FORM_EMPTY); setFile(null); setErrore(""); setPreviewName(""); };
 
@@ -79,7 +87,10 @@ export default function SezioneInputBooking({ db, user, showToast }) {
   // Tutti i campi sono obbligatori tranne le note; le spunte «senza documento»
   // sostituiscono numero e data del documento.
   const valida = () => {
-    if (!form.itId || !turno) return "Seleziona itinerario e turno";
+    if (!form.itId) return "Seleziona l'itinerario";
+    if (piuTurni) {
+      if (form.turniScelti.length < 2) return "Seleziona almeno due turni coperti dal costo";
+    } else if (!turno) return "Seleziona il turno";
     if (rimborso) {
       if (!origine) return "Seleziona la spesa a cui si riferisce il rimborso";
       const imp = parseFloat(form.importo);
@@ -120,7 +131,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
         const areaBooking = db.area(AREA_BOOKING);
         driveUrl = await caricaOrganizzato(
           file,
-          buildFileName(form.dataFattura, it.ni, turno.in, fornitore, fattura, file.name),
+          buildFileName(form.dataFattura, it.ni, turnoRif.in, fornitore, fattura, file.name),
           { dataDoc: form.dataFattura, area: areaBooking, cache: areaBooking && db.cacheCartelle(areaBooking.id) },
         );
       } catch (e) {
@@ -144,6 +155,30 @@ export default function SezioneInputBooking({ db, user, showToast }) {
     }
 
     const importo = parseFloat(form.importo) || 0;
+
+    const comune = {
+      itId: it.id,
+      cat: form.cat, fornitore, desc: form.desc,
+      data: dataPag, dataFattura: form.dataFattura || null, fattura,
+      modalita: form.modalita, da: nomeDa, note: form.note, driveUrl,
+      statoDoc: driveUrl ? "caricato" : form.inAttesa ? "in_attesa" : "non_recuperabile",
+      alert: alert.length ? alert.join(" ") : null,
+    };
+
+    if (piuTurni) {
+      // Divisione iniziale in parti uguali: resta provvisoria finché non viene
+      // sistemata nella sezione Costi comuni
+      const ok = await db.creaSpeseRipartite(
+        { ...comune, provvisoria: true },
+        dividiPartiUguali(importo, turniQuote),
+      );
+      setSaving(false);
+      if (!ok) return;
+      showToast(`Costo comune registrato su ${turniQuote.length} turni — da sistemare in Costi comuni`);
+      reset();
+      return;
+    }
+
     const ok = await db.creaSpesa({
       itId: it.id, turnoId: turno.id,
       tipo: form.tipo,
@@ -181,14 +216,27 @@ export default function SezioneInputBooking({ db, user, showToast }) {
           </Field>
 
           <Field label="Turno">
-            <Select value={form.turnoRaw} onChange={e => setForm(f => ({ ...f, turnoRaw: e.target.value, origineId: "" }))} disabled={!form.itId}>
-              <option value="">Seleziona turno...</option>
+            <Select
+              value={form.turnoRaw}
+              onChange={e => setForm(f => ({ ...f, turnoRaw: e.target.value, origineId: "" }))}
+              disabled={!form.itId || piuTurni}
+            >
+              <option value="">{piuTurni ? "Più turni (vedi sotto)" : "Seleziona turno..."}</option>
               {turniDisp.map(t => (
                 <option key={t.id} value={JSON.stringify(t)}>
                   Turno {t.n} — {fmtDate(t.in)} → {fmtDate(t.out)}
                 </option>
               ))}
             </Select>
+            {!rimborso && (
+              <label style={{ ...labelCheck, marginTop: 6 }}>
+                <input
+                  type="checkbox" checked={form.piuTurni} disabled={!form.itId}
+                  onChange={e => setForm(f => ({ ...f, piuTurni: e.target.checked, turniScelti: [], turnoRaw: "" }))}
+                />
+                Il costo ricopre più turni
+              </label>
+            )}
           </Field>
 
           <Field label="Tipo">
@@ -305,6 +353,33 @@ export default function SezioneInputBooking({ db, user, showToast }) {
             </label>
           </Field>
 
+          {piuTurni && (
+            <Field label="Turni coperti dal costo" style={{ gridColumn: "1/-1" }}>
+              <div style={{ border: "1px solid #E9EBEF", borderRadius: 12, padding: "10px 14px", background: "#FCFCFD" }}>
+                {turniDisp.length === 0 && <div style={{ fontSize: 12, color: "#9CA3AF" }}>Nessun turno disponibile</div>}
+                {turniDisp.map(t => {
+                  const scelto = form.turniScelti.includes(t.id);
+                  return (
+                    <label key={t.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", fontSize: 12.5, color: "#374151", cursor: "pointer" }}>
+                      <input
+                        type="checkbox" checked={scelto}
+                        onChange={() => set("turniScelti", scelto
+                          ? form.turniScelti.filter(x => x !== t.id)
+                          : [...form.turniScelti, t.id])}
+                      />
+                      <b>T{t.n}</b> {fmtDate(t.in)} → {fmtDate(t.out)}
+                      <span style={{ color: "#9CA3AF" }}>{t.pax ? `· ${t.pax} pax` : ""}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 11, color: "#92400E", marginTop: 6, lineHeight: 1.5 }}>
+                Il costo viene diviso <b>in parti uguali</b> tra i turni selezionati e resta in attesa di ripartizione:
+                lo trovi nella sezione <b>Costi comuni</b>, dove sistemare le quote quando i numeri sono definitivi.
+              </div>
+            </Field>
+          )}
+
           <Field label="Note" style={{ gridColumn: "1/-1" }}>
             <textarea
               value={form.note}
@@ -404,7 +479,7 @@ export default function SezioneInputBooking({ db, user, showToast }) {
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
           <button onClick={reset} style={btnSecondary}>Annulla</button>
           <button onClick={save} style={btnPrimary} disabled={saving}>
-            {saving ? "Salvataggio..." : rimborso ? "Registra rimborso" : "Registra spesa"}
+            {saving ? "Salvataggio..." : rimborso ? "Registra rimborso" : piuTurni ? "Registra costo comune" : "Registra spesa"}
           </button>
         </div>
       </Card>

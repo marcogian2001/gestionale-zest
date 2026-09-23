@@ -10,13 +10,13 @@ export default function SezioneItinerari({ db, showToast }) {
   const { itinerari } = db;
   const [ni, setNi] = useState("");
   const [ns, setNs] = useState("");
-  const [turniNew, setTurniNew] = useState([{ id: newId(), in: "", out: "" }]);
+  const [turniNew, setTurniNew] = useState([{ id: newId(), in: "", out: "", pax: "" }]);
   const [selManage, setSelManage] = useState("");
   const [turniAdd, setTurniAdd] = useState([]);
   const [showAddTurni, setShowAddTurni] = useState(false);
 
   // ── Nuovo itinerario ──────────────────────────────────────────────────────
-  const addTurno = () => setTurniNew(t => [...t, { id: newId(), in: "", out: "" }]);
+  const addTurno = () => setTurniNew(t => [...t, { id: newId(), in: "", out: "", pax: "" }]);
   const removeTurno = (id) => setTurniNew(t => t.filter(x => x.id !== id));
   const updateTurno = (id, field, val) =>
     setTurniNew(t => t.map(x => x.id === id ? { ...x, [field]: val } : x));
@@ -29,7 +29,7 @@ export default function SezioneItinerari({ db, showToast }) {
     const ok = await db.creaItinerario(ni.trim(), ns.trim(), turniNew.filter(t => t.in && t.out));
     setSaving(false);
     if (!ok) return;
-    setNi(""); setNs(""); setTurniNew([{ id: newId(), in: "", out: "" }]);
+    setNi(""); setNs(""); setTurniNew([{ id: newId(), in: "", out: "", pax: "" }]);
     showToast("Itinerario salvato");
   };
 
@@ -45,7 +45,7 @@ export default function SezioneItinerari({ db, showToast }) {
 
   // ── Aggiungi turni a itinerario esistente ─────────────────────────────────
   const addTurnoToExisting = () =>
-    setTurniAdd(t => [...t, { id: newId(), in: "", out: "" }]);
+    setTurniAdd(t => [...t, { id: newId(), in: "", out: "", pax: "" }]);
 
   const removeTurnoAdd = (id) => setTurniAdd(t => t.filter(x => x.id !== id));
 
@@ -92,6 +92,7 @@ export default function SezioneItinerari({ db, showToast }) {
               <Input type="date" value={t.in} onChange={e => updateTurno(t.id, "in", e.target.value)} style={{ flex: 1 }} />
               <span style={{ fontSize: 12, color: "#9CA3AF" }}>→</span>
               <Input type="date" value={t.out} onChange={e => updateTurno(t.id, "out", e.target.value)} style={{ flex: 1 }} />
+              <Input type="number" min="0" placeholder="pax" value={t.pax} onChange={e => updateTurno(t.id, "pax", e.target.value)} style={{ width: 78 }} />
               <button onClick={() => removeTurno(t.id)} style={btnDanger}>✕</button>
             </div>
           ))}
@@ -124,7 +125,7 @@ export default function SezioneItinerari({ db, showToast }) {
             ) : (
               <div className="tabella-scroll"><table style={tableStyle}>
                 <thead>
-                  <tr>{["Turno", "Data in", "Data out", "Stato", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
+                  <tr>{["Turno", "Data in", "Data out", "Pax", "Stato", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
                 </thead>
                 <tbody>
                   {managed.turni.map(t => (
@@ -139,6 +140,13 @@ export default function SezioneItinerari({ db, showToast }) {
                         <span style={{ textDecoration: t.cancelled ? "line-through" : "none", color: t.cancelled ? "#9CA3AF" : "inherit" }}>
                           {fmtDate(t.out)}
                         </span>
+                      </Td>
+                      <Td>
+                        <Input
+                          type="number" min="0" defaultValue={t.pax ?? ""} placeholder="—"
+                          onBlur={e => { if (String(t.pax ?? "") !== e.target.value) db.aggiornaPaxTurno(t.id, e.target.value); }}
+                          style={{ width: 74, padding: "5px 8px" }}
+                        />
                       </Td>
                       <Td>
                         {t.cancelled
@@ -176,6 +184,7 @@ export default function SezioneItinerari({ db, showToast }) {
                       <Input type="date" value={t.in} onChange={e => updateTurnoAdd(t.id, "in", e.target.value)} style={{ flex: 1 }} />
                       <span style={{ fontSize: 12, color: "#9CA3AF" }}>→</span>
                       <Input type="date" value={t.out} onChange={e => updateTurnoAdd(t.id, "out", e.target.value)} style={{ flex: 1 }} />
+                      <Input type="number" min="0" placeholder="pax" value={t.pax} onChange={e => updateTurnoAdd(t.id, "pax", e.target.value)} style={{ width: 78 }} />
                       <button onClick={() => removeTurnoAdd(t.id)} style={btnDanger}>✕</button>
                     </div>
                   ))}

@@ -9,7 +9,7 @@ function mapItinerario(row) {
     updatedBy: row.updated_by, updatedAt: row.updated_at,
     deletedBy: row.deleted_by, deletedAt: row.deleted_at,
     turni: (row.turni || [])
-      .map(t => ({ id: t.id, n: t.n, in: t.data_in, out: t.data_out, cancelled: t.cancelled }))
+      .map(t => ({ id: t.id, n: t.n, in: t.data_in, out: t.data_out, cancelled: t.cancelled, pax: t.pax }))
       .sort((a, b) => a.n - b.n),
   };
 }
@@ -19,12 +19,16 @@ function mapSpesa(row) {
     id: row.id,
     itId: row.itinerario_id, itNome: row.itinerari?.ni || "",
     turnoId: row.turno_id,
-    turnoN: row.turni?.n, turnoIn: row.turni?.data_in, turnoOut: row.turni?.data_out,
+    turnoN: row.turni?.n, turnoIn: row.turni?.data_in, turnoOut: row.turni?.data_out, turnoPax: row.turni?.pax,
     cat: row.cat, fornitore: row.fornitore, desc: row.descrizione,
     importo: Number(row.importo),
     data: row.data, dataFattura: row.data_fattura, fattura: row.fattura,
     modalita: row.modalita, da: row.effettuato_da, note: row.note,
     driveUrl: row.drive_url,
+    gruppoId: row.gruppo_id,
+    ripartizioneProvvisoria: row.ripartizione_provvisoria,
+    ripartizioneSistemataAt: row.ripartizione_sistemata_at,
+    ripartizioneSistemataBy: row.ripartizione_sistemata_by,
     tipo: row.tipo, origineId: row.spesa_origine_id, statoDoc: row.stato_doc,
     alert: row.alert_contabilita, alertRisoltoAt: row.alert_risolto_at, alertRisoltoBy: row.alert_risolto_by,
     createdBy: row.created_by, createdAt: row.created_at,
@@ -55,11 +59,11 @@ export function useZestData(enabled, showToast) {
   const reload = useCallback(async () => {
     const [it, sp, imp, pr, ar, ca] = await Promise.all([
       supabase.from("itinerari")
-        .select("*, turni(id, n, data_in, data_out, cancelled, deleted_at)")
+        .select("*, turni(id, n, data_in, data_out, cancelled, pax, deleted_at)")
         .is("deleted_at", null)
         .order("created_at"),
       supabase.from("spese")
-        .select("*, itinerari(ni), turni(n, data_in, data_out)")
+        .select("*, itinerari(ni), turni(n, data_in, data_out, pax)")
         .is("deleted_at", null)
         .order("created_at"),
       supabase.from("impostazioni").select("chiave, valore"),
@@ -101,7 +105,7 @@ export function useZestData(enabled, showToast) {
     if (error) { showToast(messaggioErrore(error)); return false; }
     if (!turni.length) { await reload(); return true; }
     return run(supabase.from("turni").insert(
-      turni.map((t, i) => ({ itinerario_id: data.id, n: i + 1, data_in: t.in, data_out: t.out }))
+      turni.map((t, i) => ({ itinerario_id: data.id, n: i + 1, data_in: t.in, data_out: t.out, pax: t.pax || null }))
     ));
   };
 
@@ -109,17 +113,83 @@ export function useZestData(enabled, showToast) {
   const eliminaItinerario = (id) =>
     run(supabase.from("itinerari").update({ deleted_at: new Date().toISOString() }).eq("id", id));
 
+  const aggiornaPaxTurno = (turnoId, pax) =>
+    run(supabase.from("turni").update({ pax: pax === "" ? null : Number(pax) }).eq("id", turnoId));
+
   const setTurnoAnnullato = (turnoId, cancelled) =>
     run(supabase.from("turni").update({ cancelled }).eq("id", turnoId));
 
   const aggiungiTurni = (itId, turni) => {
     const esistenti = itinerari.find(x => x.id === itId)?.turni.length || 0;
     return run(supabase.from("turni").insert(
-      turni.map((t, i) => ({ itinerario_id: itId, n: esistenti + i + 1, data_in: t.in, data_out: t.out }))
+      turni.map((t, i) => ({ itinerario_id: itId, n: esistenti + i + 1, data_in: t.in, data_out: t.out, pax: t.pax || null }))
     ));
   };
 
   // ── Spese ──────────────────────────────────────────────────────────────────
+  // Righe di una fattura ripartita su più turni: stesso gruppo, stesso documento
+  const creaSpeseRipartite = (base, quote) => {
+    const gruppo = crypto.randomUUID();
+    return run(supabase.from("spese").insert(quote.map(q => ({
+      itinerario_id: base.itId, turno_id: q.turnoId,
+      gruppo_id: gruppo,
+      cat: base.cat, fornitore: base.fornitore, descrizione: base.desc,
+      importo: q.importo, data: base.data || null, data_fattura: base.dataFattura || null,
+      fattura: base.fattura, modalita: base.modalita, effettuato_da: base.da, note: base.note,
+      drive_url: base.driveUrl, tipo: "pagamento",
+      stato_doc: base.statoDoc || "caricato", alert_contabilita: base.alert || null,
+      ripartizione_provvisoria: !!base.provvisoria,
+    }))));
+  };
+
+  // Rifà la ripartizione di un gruppo: aggiorna le quote esistenti, ne aggiunge
+  // di nuove e manda nel cestino i turni tolti (bloccato se hanno rimborsi).
+  const ripartisciSpesa = async (spesa, quote) => {
+    const gruppo = spesa.gruppoId || crypto.randomUUID();
+    const righe = spese.filter(s => s.gruppoId && s.gruppoId === spesa.gruppoId);
+    const attuali = righe.length ? righe : [spesa];
+
+    for (const q of quote) {
+      const esistente = attuali.find(r => r.turnoId === q.turnoId);
+      if (esistente) {
+        const { error } = await supabase.from("spese")
+          .update({ importo: q.importo, gruppo_id: gruppo }).eq("id", esistente.id);
+        if (error) { showToast(messaggioErrore(error)); await reload(); return false; }
+      } else {
+        const base = attuali[0];
+        const { error } = await supabase.from("spese").insert({
+          itinerario_id: base.itId, turno_id: q.turnoId, gruppo_id: gruppo,
+          cat: base.cat, fornitore: base.fornitore, descrizione: base.desc,
+          importo: q.importo, data: base.data || null, data_fattura: base.dataFattura || null,
+          fattura: base.fattura, modalita: base.modalita, effettuato_da: base.da, note: base.note,
+          drive_url: base.driveUrl, tipo: "pagamento", stato_doc: base.statoDoc || "caricato",
+          ripartizione_provvisoria: !!base.ripartizioneProvvisoria,
+        });
+        if (error) { showToast(messaggioErrore(error)); await reload(); return false; }
+      }
+    }
+
+    for (const r of attuali) {
+      if (!quote.some(q => q.turnoId === r.turnoId)) {
+        const { error } = await supabase.from("spese")
+          .update({ deleted_at: new Date().toISOString() }).eq("id", r.id);
+        if (error) { showToast(messaggioErrore(error)); await reload(); return false; }
+      }
+    }
+
+    await reload();
+    return true;
+  };
+
+  // «Gestito» sui costi comuni: la ripartizione non è più provvisoria
+  const segnaRipartizioneSistemata = (spesa, provvisoria = false) => {
+    const righe = spesa.gruppoId
+      ? spese.filter(s => s.gruppoId === spesa.gruppoId).map(s => s.id)
+      : [spesa.id];
+    return run(supabase.from("spese")
+      .update({ ripartizione_provvisoria: provvisoria }).in("id", righe));
+  };
+
   const creaSpesa = (s) => run(supabase.from("spese").insert({
     itinerario_id: s.itId, turno_id: s.turnoId,
     cat: s.cat, fornitore: s.fornitore, descrizione: s.desc,
@@ -208,7 +278,8 @@ export function useZestData(enabled, showToast) {
     itinerari, spese, impostazioni, loading, reload, nomeUtente,
     aree, area, salvaArea, creaArea, cacheCartelle,
     ripristina, annullaAzione,
-    creaItinerario, eliminaItinerario, setTurnoAnnullato, aggiungiTurni,
+    creaItinerario, eliminaItinerario, setTurnoAnnullato, aggiungiTurni, aggiornaPaxTurno,
+    creaSpeseRipartite, ripartisciSpesa, segnaRipartizioneSistemata,
     creaSpesa, modificaSpesa, eliminaSpesa, collegaDocumento, segnaNonRecuperabile, sbloccaDocumento, risolviAlert, salvaImpostazione,
   };
 }

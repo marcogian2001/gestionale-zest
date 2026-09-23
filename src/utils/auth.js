@@ -12,6 +12,7 @@ export const GRUPPI = [
       { id: "booking",   label: "Input booking" },
       { id: "budget",    label: "Budget booking" },
       { id: "riepilogo", label: "Riepilogo per itinerario" },
+      { id: "costi_comuni", label: "Costi comuni" },
     ],
   },
   {

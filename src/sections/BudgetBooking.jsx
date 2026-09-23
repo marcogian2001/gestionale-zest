@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { fmt, fmtDate, CATEGORIE, MODALITA, STATI_DOC } from "../utils/helpers";
 import { buildFileName, caricaOrganizzato, AREA_BOOKING } from "../utils/driveUpload";
+import RipartisciSpesa, { righeGruppo } from "../components/RipartisciSpesa";
 import {
   SectionTitle, Field, Input, Select, Empty, MetricCard,
   Th, Td, tableStyle, btnDanger, btnSm, btnPrimary, btnSecondary, inputStyle,
@@ -33,6 +34,7 @@ export default function SezioneBudget({ db, user, showToast }) {
   const [fCat, setFCat] = useState("");
   const [fDoc, setFDoc] = useState("");
   const [inModifica, setInModifica] = useState(null);
+  const [inRiparto, setInRiparto] = useState(null);
 
   const turniDisp = fIt
     ? (itinerari.find(x => String(x.id) === fIt)?.turni || [])
@@ -127,6 +129,7 @@ export default function SezioneBudget({ db, user, showToast }) {
                   <Td><Badge cat={s.cat} /></Td>
                   <Td>
                     {s.tipo === "rimborso" && <RimborsoBadge spesa={s} spese={spese} />}
+                    {s.gruppoId && <QuotaBadge spesa={s} spese={spese} />}
                     {s.desc}
                   </Td>
                   <Td style={{ color: "#6B7280" }}>{s.fornitore}</Td>
@@ -143,6 +146,11 @@ export default function SezioneBudget({ db, user, showToast }) {
                   <Td>
                     <div style={{ display: "flex", gap: 4 }}>
                       <button onClick={() => setInModifica(s)} style={btnSm}>Modifica</button>
+                      {s.tipo !== "rimborso" && (
+                        <button onClick={() => setInRiparto(s)} style={btnSm}>
+                          {s.gruppoId ? "Ripartizione" : "Ripartisci"}
+                        </button>
+                      )}
                       <button onClick={() => deleteSpesa(s)} style={btnDanger}>✕</button>
                     </div>
                   </Td>
@@ -160,6 +168,7 @@ export default function SezioneBudget({ db, user, showToast }) {
         </div>
       )}
       {inModifica && <ModificaSpesa spesa={inModifica} db={db} onClose={() => setInModifica(null)} />}
+      {inRiparto && <RipartisciSpesa spesa={inRiparto} db={db} spese={spese} showToast={showToast} onClose={() => setInRiparto(null)} />}
     </div>
   );
 }
@@ -405,3 +414,21 @@ function CaricaDocumento({ spesa, db, showToast, onClose }) {
     </div>
   );
 }
+
+// ── Quote della stessa fattura ───────────────────────────────────────────────
+function QuotaBadge({ spesa, spese }) {
+  const righe = righeGruppo(spesa, spese);
+  const pos = righe.findIndex(r => r.id === spesa.id) + 1;
+  const totale = righe.reduce((a, r) => a + r.importo, 0);
+  return (
+    <div style={{ marginBottom: 2 }}>
+      <span style={{ background: "#EEF2FF", color: "#4338CA", border: "1px solid #C7D2FE", borderRadius: 20, fontSize: 9, padding: "1px 6px", fontWeight: 700, marginRight: 4 }}>
+        QUOTA {pos}/{righe.length}
+      </span>
+      <span style={{ fontSize: 10, color: "#9CA3AF" }}>
+        fattura da € {fmt(totale)} ripartita su {righe.length} turni
+      </span>
+    </div>
+  );
+}
+

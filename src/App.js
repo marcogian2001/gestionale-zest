@@ -12,6 +12,7 @@ import SezioneRuoli        from "./sections/Ruoli";
 import SezioneRegistro     from "./sections/Registro";
 import SezioneCestino      from "./sections/Cestino";
 import SezioneContabilita  from "./sections/Contabilita";
+import SezioneCostiComuni  from "./sections/CostiComuni";
 import LoginPage           from "./components/LoginPage";
 import CambioPassword      from "./components/CambioPassword";
 import { Toast, ConfirmHost } from "./components/UI";
@@ -60,6 +61,9 @@ export default function App() {
   );
 
   const alertAperti = db.spese.filter(s => s.alert && !s.alertRisoltoAt).length;
+  const ripartizioniDaFare = new Set(
+    db.spese.filter(s => s.ripartizioneProvvisoria && s.gruppoId).map(s => s.gruppoId)
+  ).size;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: FONT, background: "#F6F7F9", color: "#111827" }}>
@@ -75,9 +79,9 @@ export default function App() {
         }}>☰</button>
         <img src="/logo.png" alt="Zest" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} />
         <div style={{ fontSize: 14, fontWeight: 800 }}>ZEST</div>
-        {alertAperti > 0 && (
+        {alertAperti + ripartizioniDaFare > 0 && (
           <span style={{ marginLeft: "auto", background: "#EF4444", color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "2px 7px" }}>
-            {alertAperti}
+            {alertAperti + ripartizioniDaFare}
           </span>
         )}
       </div>
@@ -115,7 +119,7 @@ export default function App() {
                     key={item.id} item={item}
                     active={section === item.id}
                     onClick={() => { setSection(item.id); setMenuAperto(false); }}
-                    badge={item.id === "contabilita" ? alertAperti : 0}
+                    badge={item.id === "contabilita" ? alertAperti : item.id === "costi_comuni" ? ripartizioniDaFare : 0}
                   />
                 ))}
               </div>
@@ -152,6 +156,7 @@ export default function App() {
           {section === "budget"       && <SezioneBudget       db={db} user={user} showToast={showToast} />}
           {section === "riepilogo"    && <SezioneRiepilogo    itinerari={db.itinerari} spese={db.spese} />}
           {section === "contabilita"  && <SezioneContabilita  db={db} showToast={showToast} />}
+          {section === "costi_comuni" && <SezioneCostiComuni  db={db} showToast={showToast} />}
           {section === "impostazioni" && <SezioneImpostazioni db={db} showToast={showToast} />}
           {section === "registro"     && <SezioneRegistro     db={db} showToast={showToast} />}
           {section === "cestino"      && <SezioneCestino      db={db} showToast={showToast} />}

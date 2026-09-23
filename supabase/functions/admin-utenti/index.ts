@@ -10,7 +10,7 @@ const cors = {
 };
 
 const MODULI = [
-  "itinerari", "booking", "budget", "riepilogo", "contabilita",
+  "itinerari", "booking", "budget", "riepilogo", "costi_comuni", "contabilita",
   "utenti", "ruoli", "registro", "cestino", "impostazioni",
 ];
 
