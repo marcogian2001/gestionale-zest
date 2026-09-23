@@ -61,6 +61,7 @@ export default function App() {
   );
 
   const alertAperti = db.spese.filter(s => s.alert && !s.alertRisoltoAt).length;
+  const documentiInAttesa = db.spese.filter(s => s.statoDoc === "in_attesa").length;
   const ripartizioniDaFare = new Set(
     db.spese.filter(s => s.ripartizioneProvvisoria && s.gruppoId).map(s => s.gruppoId)
   ).size;
@@ -79,9 +80,9 @@ export default function App() {
         }}>☰</button>
         <img src="/logo.png" alt="Zest" style={{ width: 28, height: 28, borderRadius: "50%", objectFit: "cover" }} />
         <div style={{ fontSize: 14, fontWeight: 800 }}>ZEST</div>
-        {alertAperti + ripartizioniDaFare > 0 && (
+        {alertAperti + ripartizioniDaFare + documentiInAttesa > 0 && (
           <span style={{ marginLeft: "auto", background: "#EF4444", color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "2px 7px" }}>
-            {alertAperti + ripartizioniDaFare}
+            {alertAperti + ripartizioniDaFare + documentiInAttesa}
           </span>
         )}
       </div>
@@ -119,7 +120,14 @@ export default function App() {
                     key={item.id} item={item}
                     active={section === item.id}
                     onClick={() => { setSection(item.id); setMenuAperto(false); }}
-                    badge={item.id === "contabilita" ? alertAperti : item.id === "costi_comuni" ? ripartizioniDaFare : 0}
+                    badge={
+                      item.id === "contabilita"  ? alertAperti
+                      : item.id === "costi_comuni" ? ripartizioniDaFare
+                      : item.id === "budget"       ? documentiInAttesa
+                      : 0
+                    }
+                    coloreBadge={item.id === "budget" ? "#D97706" : "#EF4444"}
+                    titolo={item.id === "budget" ? "Documenti in attesa di caricamento" : undefined}
                   />
                 ))}
               </div>
@@ -186,10 +194,11 @@ function Schermo({ children }) {
   );
 }
 
-function NavButton({ item, active, onClick, badge }) {
+function NavButton({ item, active, onClick, badge, coloreBadge = "#EF4444", titolo }) {
   return (
     <button
       onClick={onClick}
+      title={titolo}
       className="nav-item"
       style={{
         display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6,
@@ -202,7 +211,7 @@ function NavButton({ item, active, onClick, badge }) {
     >
       <span>{item.label}</span>
       {badge > 0 && (
-        <span style={{ background: "#EF4444", color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "1px 6px" }}>
+        <span style={{ background: coloreBadge, color: "#fff", borderRadius: 10, fontSize: 10, fontWeight: 700, padding: "1px 6px" }}>
           {badge}
         </span>
       )}
