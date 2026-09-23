@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { newId, fmtDate } from "../utils/helpers";
+import { newId, fmtDate, testoDurata } from "../utils/helpers";
 import {
   Card, CardTitle, SectionTitle, SectionSubTitle, Field,
   Input, Select, Empty, Th, Td, btnPrimary, btnSecondary, btnDanger, btnSm, tableStyle,
@@ -92,11 +92,16 @@ export default function SezioneItinerari({ db, showToast }) {
               <Input type="date" value={t.in} onChange={e => updateTurno(t.id, "in", e.target.value)} style={{ flex: 1 }} />
               <span style={{ fontSize: 12, color: "#9CA3AF" }}>→</span>
               <Input type="date" value={t.out} onChange={e => updateTurno(t.id, "out", e.target.value)} style={{ flex: 1 }} />
+              <Durata dataIn={t.in} dataOut={t.out} />
               <Input type="number" min="0" placeholder="pax" value={t.pax} onChange={e => updateTurno(t.id, "pax", e.target.value)} style={{ width: 78 }} />
               <button onClick={() => removeTurno(t.id)} style={btnDanger}>✕</button>
             </div>
           ))}
           <button onClick={addTurno} style={{ ...btnSecondary, fontSize: 11, marginTop: 4 }}>+ Aggiungi turno</button>
+          <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 8, lineHeight: 1.5 }}>
+            Il campo <b>pax</b> è facoltativo: serve solo a dividere i costi comuni in proporzione ai partecipanti
+            e si può inserire o correggere in qualsiasi momento da «Gestione turni».
+          </div>
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button onClick={saveIt} style={btnPrimary} disabled={saving}>{saving ? "Salvataggio..." : "Salva itinerario"}</button>
@@ -125,7 +130,7 @@ export default function SezioneItinerari({ db, showToast }) {
             ) : (
               <div className="tabella-scroll"><table style={tableStyle}>
                 <thead>
-                  <tr>{["Turno", "Data in", "Data out", "Pax", "Stato", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
+                  <tr>{["Turno", "Data in", "Data out", "Durata", "Pax (facoltativo)", "Stato", ""].map(h => <Th key={h}>{h}</Th>)}</tr>
                 </thead>
                 <tbody>
                   {managed.turni.map(t => (
@@ -141,6 +146,7 @@ export default function SezioneItinerari({ db, showToast }) {
                           {fmtDate(t.out)}
                         </span>
                       </Td>
+                      <Td style={{ fontSize: 11, color: "#6B7280", whiteSpace: "nowrap" }}>{testoDurata(t.in, t.out)}</Td>
                       <Td>
                         <Input
                           type="number" min="0" defaultValue={t.pax ?? ""} placeholder="—"
@@ -184,6 +190,7 @@ export default function SezioneItinerari({ db, showToast }) {
                       <Input type="date" value={t.in} onChange={e => updateTurnoAdd(t.id, "in", e.target.value)} style={{ flex: 1 }} />
                       <span style={{ fontSize: 12, color: "#9CA3AF" }}>→</span>
                       <Input type="date" value={t.out} onChange={e => updateTurnoAdd(t.id, "out", e.target.value)} style={{ flex: 1 }} />
+                      <Durata dataIn={t.in} dataOut={t.out} />
                       <Input type="number" min="0" placeholder="pax" value={t.pax} onChange={e => updateTurnoAdd(t.id, "pax", e.target.value)} style={{ width: 78 }} />
                       <button onClick={() => removeTurnoAdd(t.id)} style={btnDanger}>✕</button>
                     </div>
@@ -222,7 +229,7 @@ export default function SezioneItinerari({ db, showToast }) {
                   border: `1px solid ${t.cancelled ? "#E5E7EB" : "#BAE6FD"}`,
                   textDecoration: t.cancelled ? "line-through" : "none",
                 }}>
-                  T{t.n}: {fmtDate(t.in)} → {fmtDate(t.out)}
+                  T{t.n}: {fmtDate(t.in)} → {fmtDate(t.out)} · {testoDurata(t.in, t.out)}{t.pax ? ` · ${t.pax} pax` : ""}
                 </span>
               ))}
             </div>
@@ -230,5 +237,21 @@ export default function SezioneItinerari({ db, showToast }) {
         ))
       )}
     </div>
+  );
+}
+// ── Durata del turno, calcolata dalle date ───────────────────────────────────
+function Durata({ dataIn, dataOut }) {
+  const testo = testoDurata(dataIn, dataOut);
+  const errore = testo === "date invertite";
+  return (
+    <span style={{
+      fontSize: 11, color: errore ? "#B91C1C" : "#6B7280", whiteSpace: "nowrap",
+      minWidth: 108, textAlign: "center",
+      background: testo ? (errore ? "#FEF2F2" : "#F5F6F8") : "transparent",
+      border: `1px solid ${testo ? (errore ? "#FECACA" : "#ECEEF1") : "transparent"}`,
+      borderRadius: 999, padding: testo ? "4px 10px" : 0,
+    }}>
+      {testo}
+    </span>
   );
 }

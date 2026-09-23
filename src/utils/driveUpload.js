@@ -108,6 +108,17 @@ async function trovaCartella(nome, parentId, token) {
   }
 }
 
+// La cartella salvata può essere stata cestinata o eliminata da Drive
+async function cartellaValida(id, token) {
+  try {
+    const json = await driveFetch(
+      `https://www.googleapis.com/drive/v3/files/${id}?fields=id,trashed`, token);
+    return !!json.id && !json.trashed;
+  } catch {
+    return false;
+  }
+}
+
 async function creaCartella(nome, parentId, token) {
   const json = await driveFetch("https://www.googleapis.com/drive/v3/files?fields=id", token, {
     method: "POST",
@@ -124,7 +135,9 @@ export async function cartellaDelMese(dataDoc, area, cache, token) {
 
   const risolvi = async (annoN, meseN, nome, parentId) => {
     const salvata = cache.get(annoN, meseN);
-    if (salvata) return salvata;
+    if (salvata && await cartellaValida(salvata, token)) return salvata;
+    // Cartella sparita o finita nel cestino di Drive: si ricrea e si aggiorna l'elenco
+    if (salvata) await cache.dimentica(annoN, meseN);
     const id = (await trovaCartella(nome, parentId, token)) || (await creaCartella(nome, parentId, token));
     await cache.salva(annoN, meseN, id);
     return id;

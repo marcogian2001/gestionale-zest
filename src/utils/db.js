@@ -266,6 +266,11 @@ export function useZestData(enabled, showToast) {
   const cacheCartelle = (areaId) => ({
     get: (anno, mese) =>
       cartelle.find(c => c.area_id === areaId && c.anno === anno && c.mese === mese)?.folder_id || null,
+    dimentica: async (anno, mese) => {
+      await supabase.from("drive_cartelle")
+        .delete().eq("area_id", areaId).eq("anno", anno).eq("mese", mese);
+      setCartelle(prev => prev.filter(c => !(c.area_id === areaId && c.anno === anno && c.mese === mese)));
+    },
     salva: async (anno, mese, folderId) => {
       const { data } = await supabase.from("drive_cartelle")
         .insert({ area_id: areaId, anno, mese, folder_id: folderId })
