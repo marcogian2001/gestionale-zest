@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { fmt, fmtDate, CATEGORIE, MODALITA, STATI_DOC, residuoRimborsabile } from "../utils/helpers";
-import { buildFileName, caricaOrganizzato, AREA_BOOKING } from "../utils/driveUpload";
+import { buildFileName, caricaDocumento, AREA_BOOKING } from "../utils/driveUpload";
 import { dividiPartiUguali } from "../components/Ripartizione";
 import {
   Card, SectionTitle, Field, Input, Select, Empty,
@@ -129,10 +129,15 @@ export default function SezioneInputBooking({ db, user, showToast }) {
     if (file) {
       try {
         const areaBooking = db.area(AREA_BOOKING);
-        driveUrl = await caricaOrganizzato(
+        driveUrl = await caricaDocumento(
           file,
           buildFileName(form.dataFattura, it.ni, turnoRif.in, fornitore, fattura, file.name),
-          { dataDoc: form.dataFattura, area: areaBooking, cache: areaBooking && db.cacheCartelle(areaBooking.id) },
+          {
+            dataDoc: form.dataFattura,
+            areaNome: AREA_BOOKING,
+            area: areaBooking,
+            cache: areaBooking && db.cacheCartelle(areaBooking.id),
+          },
         );
       } catch (e) {
         console.error(e);

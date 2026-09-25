@@ -1,3 +1,5 @@
+import { supabase } from "./supabase";
+
 // ── Configurazione ────────────────────────────────────────────────────────────
 // Cartella storica, usata solo come ripiego se un'area non ha la sua cartella
 export const DRIVE_FOLDER_ID = "18emYlCWDl0XRTrvA8G2mHo6ZrbuEA6as";
@@ -171,4 +173,41 @@ export async function caricaOrganizzato(file, fileName, opts) {
     parentId = await cartellaDelMese(opts.dataDoc, opts.area, opts.cache, token);
   }
   return uploadToDrive(file, fileName, parentId);
+}
+
+// ── Caricamento tramite il gestionale (account aziendale) ─────────────────────
+// Il file viene passato alla funzione "carica-drive", che lo salva su Drive a
+// nome dell'account aziendale: nessun utente deve collegare il proprio Google.
+// Finché l'integrazione non è configurata si continua con il vecchio percorso.
+function leggiBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = () => reject(new Error("Lettura del file non riuscita"));
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function caricaDocumento(file, fileName, opts) {
+  const contenuto = await leggiBase64(file);
+  const { data, error } = await supabase.functions.invoke("carica-drive", {
+    body: {
+      nomeFile: fileName,
+      mime: file.type,
+      contenuto,
+      areaNome: opts?.areaNome || AREA_BOOKING,
+      dataDoc: opts?.dataDoc,
+    },
+  });
+
+  if (!error && data?.url) return data.url;
+
+  let messaggio = error?.message || data?.error || "Upload non riuscito";
+  try { messaggio = (await error.context.json()).error || messaggio; } catch {}
+
+  // Integrazione non ancora attiva: si usa il collegamento Google dell'utente
+  if (/non configurata|Function not found|not found/i.test(messaggio)) {
+    return caricaOrganizzato(file, fileName, opts);
+  }
+  throw new Error(messaggio);
 }

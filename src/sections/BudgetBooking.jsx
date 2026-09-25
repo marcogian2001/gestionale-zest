@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { fmt, fmtDate, CATEGORIE, MODALITA, STATI_DOC } from "../utils/helpers";
-import { buildFileName, caricaOrganizzato, AREA_BOOKING } from "../utils/driveUpload";
+import { buildFileName, caricaDocumento, AREA_BOOKING } from "../utils/driveUpload";
 import RipartisciSpesa, { righeGruppo } from "../components/RipartisciSpesa";
 import {
   SectionTitle, Field, Input, Select, Empty, MetricCard,
@@ -354,8 +354,9 @@ function CaricaDocumento({ spesa, db, showToast, onClose }) {
     setErrore(""); setUploading(true);
     try {
       const areaBooking = db.area(AREA_BOOKING);
-      const url = await caricaOrganizzato(file, nomeFile, {
-        dataDoc: dataFattura, area: areaBooking, cache: areaBooking && db.cacheCartelle(areaBooking.id),
+      const url = await caricaDocumento(file, nomeFile, {
+        dataDoc: dataFattura, areaNome: AREA_BOOKING,
+        area: areaBooking, cache: areaBooking && db.cacheCartelle(areaBooking.id),
       });
       if (await db.collegaDocumento(spesa.id, url, { fattura: fattura.trim(), dataFattura })) {
         showToast("Documento caricato su Drive");
