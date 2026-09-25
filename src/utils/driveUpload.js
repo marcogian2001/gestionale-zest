@@ -74,6 +74,12 @@ export async function uploadToDrive(file, fileName, parentId = DRIVE_FOLDER_ID) 
         );
         const json = await res.json();
         if (json.id) resolve(`https://drive.google.com/file/d/${json.id}/view`);
+        else if (json.error?.code === 404 || json.error?.code === 403) {
+          reject(new Error(
+            "questo account Google non può scrivere nella cartella del gestionale. " +
+            "Accedi con l'account aziendale che ha accesso alla cartella, oppure avvisa l'amministratore."
+          ));
+        }
         else reject(new Error(json.error?.message || "Upload fallito"));
       } catch (e) { reject(e); }
     };
@@ -108,14 +114,18 @@ async function trovaCartella(nome, parentId, token) {
   }
 }
 
-// La cartella salvata può essere stata cestinata o eliminata da Drive
-async function cartellaValida(id, token) {
+// Stato di una cartella già salvata. Attenzione: con il permesso "drive.file"
+// Google mostra a ogni account solo ciò che ha creato lui, quindi una cartella
+// creata da un collega risulta "sconosciuta": in quel caso va comunque usata,
+// altrimenti ogni utente ne creerebbe una copia.
+async function statoCartella(id, token) {
   try {
     const json = await driveFetch(
       `https://www.googleapis.com/drive/v3/files/${id}?fields=id,trashed`, token);
-    return !!json.id && !json.trashed;
+    if (!json.id) return "sconosciuta";
+    return json.trashed ? "cestinata" : "ok";
   } catch {
-    return false;
+    return "sconosciuta";
   }
 }
 
@@ -135,9 +145,12 @@ export async function cartellaDelMese(dataDoc, area, cache, token) {
 
   const risolvi = async (annoN, meseN, nome, parentId) => {
     const salvata = cache.get(annoN, meseN);
-    if (salvata && await cartellaValida(salvata, token)) return salvata;
-    // Cartella sparita o finita nel cestino di Drive: si ricrea e si aggiorna l'elenco
-    if (salvata) await cache.dimentica(annoN, meseN);
+    if (salvata) {
+      const stato = await statoCartella(salvata, token);
+      if (stato !== "cestinata") return salvata;   // "ok" oppure creata da un altro account
+      // Solo se è davvero nel cestino la si ricrea
+      await cache.dimentica(annoN, meseN);
+    }
     const id = (await trovaCartella(nome, parentId, token)) || (await creaCartella(nome, parentId, token));
     await cache.salva(annoN, meseN, id);
     return id;
