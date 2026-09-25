@@ -205,9 +205,13 @@ export async function caricaDocumento(file, fileName, opts) {
   let messaggio = error?.message || data?.error || "Upload non riuscito";
   try { messaggio = (await error.context.json()).error || messaggio; } catch {}
 
-  // Integrazione non ancora attiva: si usa il collegamento Google dell'utente
+  // Nessun ripiego sull'account personale di chi carica: finirebbero file e
+  // cartelle nel suo Drive. Meglio fermarsi e spiegare cosa manca.
   if (/non configurata|Function not found|not found/i.test(messaggio)) {
-    return caricaOrganizzato(file, fileName, opts);
+    throw new Error(
+      "Google Drive non è ancora collegato: un Super Admin deve collegare l'account aziendale " +
+      "da Impostazioni → Collegamento a Google Drive. La spesa non è stata salvata."
+    );
   }
   throw new Error(messaggio);
 }
