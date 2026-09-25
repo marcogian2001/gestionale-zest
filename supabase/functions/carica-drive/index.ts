@@ -3,9 +3,13 @@
 // stia usando il gestionale. Così le cartelle sono le stesse per tutti e
 // nessuno deve collegare il proprio Google.
 //
-// Variabili da impostare nei Secrets del progetto Supabase:
-//   GOOGLE_SA_KEY     → contenuto del file JSON dell'account di servizio
-//   GOOGLE_DRIVE_USER → amministrazione@zestfamily.it
+// L'accesso a Drive arriva dal collegamento fatto una volta sola con
+// "collega-drive" (permesso permanente salvato nella tabella segreti).
+// In alternativa si può usare un account di servizio, se configurato.
+//
+// Secrets del progetto Supabase:
+//   GOOGLE_OAUTH_CLIENT_ID / GOOGLE_OAUTH_CLIENT_SECRET → collegamento OAuth
+//   oppure GOOGLE_SA_KEY + GOOGLE_DRIVE_USER            → account di servizio
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { SignJWT, importPKCS8 } from "npm:jose@5";
 
@@ -27,13 +31,39 @@ function risposta(body: unknown, status = 200) {
   });
 }
 
-// ── Token Google per conto dell'utente aziendale ─────────────────────────────
-async function tokenGoogle() {
+// ── Token Google dal collegamento salvato ────────────────────────────────────
+async function tokenDaCollegamento(admin: any) {
+  const clientId = Deno.env.get("GOOGLE_OAUTH_CLIENT_ID");
+  const clientSecret = Deno.env.get("GOOGLE_OAUTH_CLIENT_SECRET");
+  if (!clientId || !clientSecret) return null;
+
+  const { data } = await admin.from("segreti").select("valore")
+    .eq("chiave", "google_refresh_token").maybeSingle();
+  if (!data?.valore) return null;
+
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId, client_secret: clientSecret,
+      refresh_token: data.valore, grant_type: "refresh_token",
+    }),
+  });
+  const tok = await res.json();
+  if (!tok.access_token) {
+    throw new Error(
+      "Il collegamento con Google non è più valido: rifallo da Impostazioni. " +
+      (tok.error_description || tok.error || "")
+    );
+  }
+  return tok.access_token as string;
+}
+
+// ── Token Google con account di servizio (alternativa) ───────────────────────
+async function tokenServiceAccount() {
   const grezza = Deno.env.get("GOOGLE_SA_KEY");
   const utente = Deno.env.get("GOOGLE_DRIVE_USER");
-  if (!grezza || !utente) {
-    throw new Error("Integrazione Drive non configurata: mancano GOOGLE_SA_KEY o GOOGLE_DRIVE_USER");
-  }
+  if (!grezza || !utente) return null;
   const sa = JSON.parse(grezza);
   const chiave = await importPKCS8(sa.private_key, "RS256");
 
@@ -122,7 +152,12 @@ Deno.serve(async (req) => {
       .eq("nome", areaNome || "Booking Viaggi").single();
     if (!area?.drive_folder_id) throw new Error("Area senza cartella Drive: impostala in Impostazioni");
 
-    const token = await tokenGoogle();
+    const token = (await tokenDaCollegamento(admin)) || (await tokenServiceAccount());
+    if (!token) {
+      throw new Error(
+        "Integrazione Drive non configurata: collega l'account aziendale da Impostazioni"
+      );
+    }
 
     // Cartella anno e cartella mese, create al volo se mancano.
     // L'elenco in drive_cartelle evita di ricercarle a ogni caricamento.

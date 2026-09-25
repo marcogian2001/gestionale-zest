@@ -16,6 +16,7 @@ import SezioneCostiComuni  from "./sections/CostiComuni";
 import LoginPage           from "./components/LoginPage";
 import CambioPassword      from "./components/CambioPassword";
 import { Toast, ConfirmHost } from "./components/UI";
+import { completaCollegamentoDrive } from "./utils/driveUpload";
 
 const FONT = "'DM Sans','Segoe UI',system-ui,sans-serif";
 
@@ -42,6 +43,19 @@ export default function App() {
   const home = moduliVisibili[0]?.id || "itinerari";
 
   useEffect(() => { window._googleClientId = clientId; }, [clientId]);
+
+  // Ritorno dalla schermata di consenso di Google: si completa il collegamento
+  useEffect(() => {
+    if (!user) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("state") !== "drive") return;
+    const code = params.get("code");
+    window.history.replaceState({}, "", window.location.pathname);
+    if (!code) { showToast("Collegamento a Google annullato"); return; }
+    completaCollegamentoDrive(code)
+      .then(r => { showToast(`Drive collegato${r?.account ? " come " + r.account : ""}`); setSection("impostazioni"); })
+      .catch(e => showToast("Collegamento non riuscito: " + e.message));
+  }, [user, showToast]);
   useEffect(() => { if (user) setSection(home); }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (user && !canAccess(user, section)) setSection(home); }, [user, section, home]);
 

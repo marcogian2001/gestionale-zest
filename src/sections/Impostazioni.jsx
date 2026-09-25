@@ -1,40 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { statoCollegamentoDrive, avviaCollegamentoDrive, scollegaDrive } from "../utils/driveUpload";
+import { fmtDataOra, conferma } from "../components/UI";
 import { Card, CardTitle, SectionTitle, Field, Input, btnPrimary, btnSecondary, btnSm } from "../components/UI";
 
 export default function SezioneImpostazioni({ db, showToast }) {
-  const clientId          = db.impostazioni.google_client_id || "";
-  const [input, setInput] = useState(clientId);
-
-  const save = async () => {
-    if (await db.salvaImpostazione("google_client_id", input.trim())) showToast("Impostazioni salvate");
-  };
-
   return (
     <div>
       <SectionTitle>Impostazioni</SectionTitle>
 
-      {/* Google Drive */}
+      {/* Collegamento account Google */}
       <Card>
-        <CardTitle>Integrazione Google Drive</CardTitle>
-        <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 16, lineHeight: 1.6 }}>
-          Inserisci il tuo Google OAuth Client ID per abilitare il caricamento automatico
-          delle fatture su Google Drive. Viene salvato nel database ed è valido per tutti gli utenti.
-        </p>
-        <Field label="Google OAuth Client ID">
-          <Input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="es. 504616770565-xxxx.apps.googleusercontent.com"
-          />
-        </Field>
-        {clientId && (
-          <div style={{ marginTop: 10, fontSize: 12, color: "#059669", display: "flex", alignItems: "center", gap: 6 }}>
-            ✓ Client ID configurato — Drive upload attivo
-          </div>
-        )}
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-          <button onClick={save} style={btnPrimary}>Salva impostazioni</button>
-        </div>
+        <CardTitle>Collegamento a Google Drive</CardTitle>
+        <CollegamentoDrive showToast={showToast} />
       </Card>
 
       {/* Aree e cartelle Drive */}
@@ -150,6 +127,66 @@ function AreeDrive({ db, showToast }) {
           <button onClick={() => setNuova({ nome: "", folder: "" })} style={{ ...btnSecondary, fontSize: 11 }}>+ Aggiungi area</button>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Collegamento dell'account aziendale che carica i documenti ───────────────
+function CollegamentoDrive({ showToast }) {
+  const [stato, setStato] = useState(null);
+  const [attesa, setAttesa] = useState(false);
+
+  const carica = useCallback(async () => setStato(await statoCollegamentoDrive()), []);
+  useEffect(() => { carica(); }, [carica]);
+
+  const collega = async () => {
+    setAttesa(true);
+    try { await avviaCollegamentoDrive(); }
+    catch (e) { showToast("Collegamento non riuscito: " + e.message); setAttesa(false); }
+  };
+
+  const scollega = async () => {
+    if (!(await conferma("Scollegare l'account Google? Finché non ne colleghi un altro non sarà possibile caricare documenti.", "Scollega"))) return;
+    try { await scollegaDrive(); showToast("Account scollegato"); carica(); }
+    catch (e) { showToast("Operazione non riuscita: " + e.message); }
+  };
+
+  if (!stato) return <div style={{ fontSize: 12, color: "#9CA3AF" }}>Verifica in corso...</div>;
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: "#6B7280", marginBottom: 14, lineHeight: 1.6 }}>
+        I documenti vengono caricati su Drive con <b>un unico account aziendale</b>, chiunque stia usando
+        il gestionale: così le cartelle sono le stesse per tutti e nessuno deve collegare il proprio Google.
+      </p>
+
+      {stato.collegato ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0", borderRadius: 999, fontSize: 11, padding: "5px 12px", fontWeight: 700 }}>
+            ✓ Collegato
+          </span>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{stato.account || "account Google aziendale"}</div>
+            {stato.aggiornato && (
+              <div style={{ fontSize: 10.5, color: "#9CA3AF" }}>collegato il {fmtDataOra(stato.aggiornato)}</div>
+            )}
+          </div>
+          <button onClick={collega} style={btnSecondary} disabled={attesa}>Ricollega</button>
+          <button onClick={scollega} style={btnSecondary}>Scollega</button>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <span style={{ background: "#FEF2F2", color: "#B91C1C", border: "1px solid #FECACA", borderRadius: 999, fontSize: 11, padding: "5px 12px", fontWeight: 700 }}>
+            Non collegato
+          </span>
+          <div style={{ flex: 1, minWidth: 220, fontSize: 12, color: "#6B7280" }}>
+            Accedi con l'account aziendale (es. amministrazione@zestfamily.it) e autorizza una volta sola.
+          </div>
+          <button onClick={collega} style={btnPrimary} disabled={attesa}>
+            {attesa ? "Apertura..." : "Collega Google Drive"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -211,3 +211,42 @@ export async function caricaDocumento(file, fileName, opts) {
   }
   throw new Error(messaggio);
 }
+
+// ── Collegamento dell'account Google aziendale ────────────────────────────────
+const REDIRECT_URI = () => window.location.origin + "/";
+
+async function chiamaCollega(body) {
+  const { data, error } = await supabase.functions.invoke("collega-drive", { body });
+  if (error) {
+    let msg = error.message;
+    try { msg = (await error.context.json()).error || msg; } catch {}
+    throw new Error(msg);
+  }
+  if (data?.error) throw new Error(data.error);
+  return data;
+}
+
+export async function statoCollegamentoDrive() {
+  const { data, error } = await supabase.rpc("stato_collegamento_drive");
+  if (error) return { collegato: false };
+  const riga = Array.isArray(data) ? data[0] : data;
+  return {
+    collegato: !!riga?.collegato,
+    account: riga?.account || "",
+    aggiornato: riga?.aggiornato || null,
+  };
+}
+
+// Porta alla schermata di consenso di Google; al ritorno l'indirizzo contiene ?code=
+export async function avviaCollegamentoDrive() {
+  const { url } = await chiamaCollega({ action: "url", redirectUri: REDIRECT_URI() });
+  window.location.href = url + "&state=drive";
+}
+
+export function completaCollegamentoDrive(code) {
+  return chiamaCollega({ action: "scambia", code, redirectUri: REDIRECT_URI() });
+}
+
+export function scollegaDrive() {
+  return chiamaCollega({ action: "scollega" });
+}
